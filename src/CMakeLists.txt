@@ -2,8 +2,10 @@
 
 target_sources( ${PROJECT_NAME}
     PRIVATE
-        Example.h
-        Example.cpp
+        godot_rtmidi_in.h
+        godot_rtmidi_in.cpp
+        godot_rtmidi_out.h
+        godot_rtmidi_out.cpp
         GDExtensionTemplate.h
         GDExtensionTemplate.cpp
         RegisterExtension.cpp

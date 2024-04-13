@@ -1,3 +1,6 @@
 [submodule "extern/godot-cpp"]
 	path = extern/godot-cpp
 	url = https://github.com/godotengine/godot-cpp.git
+[submodule "extern/rtmidi"]
+	path = extern/rtmidi
+	url = https://github.com/thestk/rtmidi

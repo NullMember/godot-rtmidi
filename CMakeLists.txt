@@ -27,7 +27,7 @@ if ( APPLE )
 endif()
 
 # Main project information
-project( GDExtensionTemplate
+project( godot_rtmidi
     LANGUAGES
         CXX
     VERSION
@@ -128,8 +128,11 @@ if ( NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/extern/godot-cpp/Makefile" )
 endif()
 
 set( GODOT_CPP_SYSTEM_HEADERS ON CACHE BOOL "" FORCE )
+set( RTMIDI_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE )
+set( RTMIDI_BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE )
 
 add_subdirectory( extern/godot-cpp )
+add_subdirectory( extern/rtmidi )
 
 set_target_properties( godot-cpp
     PROPERTIES
@@ -139,4 +142,5 @@ set_target_properties( godot-cpp
 target_link_libraries( ${PROJECT_NAME}
     PRIVATE
         godot-cpp
+        rtmidi
 )

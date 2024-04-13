@@ -13,7 +13,7 @@
       "generator": "Ninja",
       "hidden": true,
       "environment": {
-        "PROJECT_NAME": "MyGodotExtention"
+        "PROJECT_NAME": "godot-rtmidi_extension"
       }
     },
     {

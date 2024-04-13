@@ -6,7 +6,8 @@
 #include "godot_cpp/core/defs.hpp"
 #include "godot_cpp/godot.hpp"
 
-#include "Example.h"
+#include "godot_rtmidi_in.h"
+#include "godot_rtmidi_out.h"
 #include "GDExtensionTemplate.h"
 
 /// @file
@@ -26,13 +27,8 @@ namespace
             return;
         }
 
-        godot::ClassDB::register_class<ExampleRef>();
-        godot::ClassDB::register_class<ExampleMin>();
-        godot::ClassDB::register_class<Example>();
-        godot::ClassDB::register_class<ExampleVirtual>( true );
-        godot::ClassDB::register_abstract_class<ExampleAbstract>();
-
-        godot::ClassDB::register_class<GDExtensionTemplate>();
+        godot::ClassDB::register_class<godot::MidiIn>();
+        godot::ClassDB::register_class<godot::MidiOut>();
     }
 
     /// @brief Called by Godot to let us do any cleanup.
