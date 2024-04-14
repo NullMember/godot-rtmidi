@@ -25,9 +25,9 @@ public:
     void open_virtual_port(String port_name);
     void close_port();
     bool is_port_open();
-    int get_port_count();
-    String get_port_name(int port_number);
-    PackedStringArray get_port_names();
+    static int get_port_count();
+    static String get_port_name(int port_number);
+    static PackedStringArray get_port_names();
     void send_message(PackedByteArray message);
 
     void _process(double delta) override;

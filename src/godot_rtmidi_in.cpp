@@ -8,9 +8,9 @@ void MidiIn::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("open_virtual_port", "port_name"), &MidiIn::open_virtual_port);
 	ClassDB::bind_method(D_METHOD("close_port"), &MidiIn::close_port);
 	ClassDB::bind_method(D_METHOD("is_port_open"), &MidiIn::is_port_open);
-	ClassDB::bind_method(D_METHOD("get_port_count"), &MidiIn::get_port_count);
-	ClassDB::bind_method(D_METHOD("get_port_name", "port_number"), &MidiIn::get_port_name);
-	ClassDB::bind_method(D_METHOD("get_port_names"), &MidiIn::get_port_names);
+	ClassDB::bind_static_method("MidiIn", D_METHOD("get_port_count"), &MidiIn::get_port_count);
+	ClassDB::bind_static_method("MidiIn", D_METHOD("get_port_name", "port_number"), &MidiIn::get_port_name);
+	ClassDB::bind_static_method("MidiIn", D_METHOD("get_port_names"), &MidiIn::get_port_names);
 	ClassDB::bind_method(D_METHOD("ignore_types", "midi_sysex", "midi_time", "midi_sense"), &MidiIn::ignore_types);
 	ClassDB::bind_method(D_METHOD("get_message"), &MidiIn::get_message);
 	ClassDB::bind_method(D_METHOD("set_buffer_size", "buffer_size", "buffer_count"), &MidiIn::set_buffer_size);
@@ -47,17 +47,20 @@ bool MidiIn::is_port_open() {
 }
 
 int MidiIn::get_port_count() {
-	return midi_in->getPortCount();
+	RtMidiIn _midi_in;
+	return _midi_in.getPortCount();
 }
 
 String MidiIn::get_port_name(int port_number) {
-	return midi_in->getPortName(port_number).c_str();
+	RtMidiIn _midi_in;
+	return _midi_in.getPortName(port_number).c_str();
 }
 
 PackedStringArray MidiIn::get_port_names() {
+	RtMidiIn _midi_in;
 	PackedStringArray names;
-	for (unsigned int i = 0; i < midi_in->getPortCount(); i++) {
-		names.push_back(midi_in->getPortName(i).c_str());
+	for (unsigned int i = 0; i < _midi_in.getPortCount(); i++) {
+		names.push_back(_midi_in.getPortName(i).c_str());
 	}
 	return names;
 }

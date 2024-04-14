@@ -27,9 +27,9 @@ public:
     void open_virtual_port(String port_name);
     void close_port();
     bool is_port_open();
-    int get_port_count();
-    String get_port_name(int port_number);
-    PackedStringArray get_port_names();
+    static int get_port_count();
+    static String get_port_name(int port_number);
+    static PackedStringArray get_port_names();
     void ignore_types(bool midi_sysex, bool midi_time, bool midi_sense);
     PackedByteArray get_message();
     void set_buffer_size(unsigned int buffer_size, unsigned int buffer_count);
