@@ -95,6 +95,33 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "name": "android-debug",
+      "displayName": "Android Debug",
+      "inherits": "default",
+      "binaryDir": "${sourceDir}/../build_${env:PROJECT_NAME}_Android-ARM64",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "Android",
+        "CMAKE_SYSTEM_VERSION": "33",
+        "CMAKE_ANDROID_ARCH_ABI": "arm64-v8a",
+        "CMAKE_ANDROID_NDK": "/opt/homebrew/share/android-commandlinetools/ndk",
+        "CMAKE_ANDROID_STL_TYPE": "gnustl_static",
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
+    },
+    {
+      "name": "android-release",
+      "displayName": "Android Release",
+      "inherits": "android-debug",
+      "cacheVariables": {
+        "CMAKE_SYSTEM_NAME": "Android",
+        "CMAKE_SYSTEM_VERSION": "33",
+        "CMAKE_ANDROID_ARCH_ABI": "arm64-v8a",
+        "CMAKE_ANDROID_NDK": "/opt/homebrew/share/android-commandlinetools",
+        "CMAKE_ANDROID_STL_TYPE": "gnustl_static",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     }
   ]
 }
