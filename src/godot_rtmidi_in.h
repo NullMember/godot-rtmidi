@@ -15,6 +15,7 @@ private:
     void (*error_callback)(RtMidiError::Type type, const std::string &error_text, void* user_data);
     static void midi_message_callback(double deltatime, std::vector<unsigned char>* message, void* user_data);
     static void midi_error_callback(RtMidiError::Type type, const std::string &error_text, void* user_data);
+    void MidiIn::_emit_midi_message( double deltatime, PackedByteArray message );
 
 protected:
 	static void _bind_methods();

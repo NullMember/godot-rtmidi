@@ -14,6 +14,8 @@ void MidiIn::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("ignore_types", "midi_sysex", "midi_time", "midi_sense"), &MidiIn::ignore_types);
 	ClassDB::bind_method(D_METHOD("get_message"), &MidiIn::get_message);
 	ClassDB::bind_method(D_METHOD("set_buffer_size", "buffer_size", "buffer_count"), &MidiIn::set_buffer_size);
+    ClassDB::bind_method( D_METHOD( "_emit_midi_message", "deltatime", "message" ),
+                          &MidiIn::_emit_midi_message );
 	ADD_SIGNAL(MethodInfo("midi_message", PropertyInfo(Variant::FLOAT, "deltatime"), PropertyInfo(Variant::PACKED_BYTE_ARRAY, "message")));
 }
 
@@ -91,7 +93,13 @@ void MidiIn::midi_message_callback(double deltatime, std::vector<unsigned char>*
 	for (unsigned int i = 0; i < message->size(); i++) {
 		packed_message.set(i, (*message)[i]);
 	}
-	midi_in->emit_signal("midi_message", deltatime, packed_message);
+	// midi_in->emit_signal("midi_message", deltatime, packed_message);
+    midi_in->call_deferred( "_emit_midi_message", deltatime, packed_message);
+}
+
+void MidiIn::_emit_midi_message( double deltatime, PackedByteArray message )
+{
+    emit_signal( "midi_message", deltatime, message );
 }
 
 void MidiIn::midi_error_callback(RtMidiError::Type type, const std::string &error_text, void* user_data) {
