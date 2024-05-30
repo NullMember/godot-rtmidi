@@ -11,8 +11,6 @@ class MidiIn : public Node {
 
 private:
 	RtMidiIn* midi_in;
-    void (*message_callback)(double deltatime, std::vector<unsigned char>* message, void* user_data);
-    void (*error_callback)(RtMidiError::Type type, const std::string &error_text, void* user_data);
     static void midi_message_callback(double deltatime, std::vector<unsigned char>* message, void* user_data);
     static void midi_error_callback(RtMidiError::Type type, const std::string &error_text, void* user_data);
 

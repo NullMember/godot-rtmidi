@@ -19,10 +19,8 @@ void MidiIn::_bind_methods() {
 
 MidiIn::MidiIn() {
 	midi_in = new RtMidiIn();
-	message_callback = midi_message_callback;
-	error_callback = midi_error_callback;
-	midi_in->setCallback(message_callback, this);
-	midi_in->setErrorCallback(error_callback, this);
+	midi_in->setCallback(midi_message_callback, this);
+	midi_in->setErrorCallback(midi_error_callback, this);
 }
 
 MidiIn::~MidiIn() {
