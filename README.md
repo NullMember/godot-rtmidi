@@ -1,7 +1,7 @@
 # godot-rtmidi
 
 Realtime MIDI IO extension for Godot game engine.
-This extension built using (https://github.com/thestk/rtmidi)[rtmidi].
+This extension built using [rtmidi](https://github.com/thestk/rtmidi).
 
 ## How to use
 
