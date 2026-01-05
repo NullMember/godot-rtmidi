@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3 uid="uid://dh0oj81pufivs"]
+
+[ext_resource type="Script" uid="uid://bkwk40ybs8kgm" path="res://example.gd" id="1_jdh55"]
+
+[node name="Node" type="Node"]
+script = ExtResource("1_jdh55")
+
+[node name="MidiIn" type="MidiIn" parent="."]
+
+[node name="MidiOut" type="MidiOut" parent="."]

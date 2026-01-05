@@ -1,5 +1,66 @@
-CMakeLists.txt.user
-.vscode/settings.json
+# Godot auto generated files
+*.gen.*
+.godot/
 
-# MacOS specific files
+# Ignore library files but not the gdextension file
+demo/addons/godot_rtmidi/*
+!demo/addons/godot_rtmidi/android
+demo/addons/godot_rtmidi/android/*
+!demo/addons/godot_rtmidi/android/.gitkeep
+!demo/addons/godot_rtmidi/linux
+demo/addons/godot_rtmidi/linux/*
+!demo/addons/godot_rtmidi/linux/.gitkeep
+!demo/addons/godot_rtmidi/macos
+demo/addons/godot_rtmidi/macos/*
+!demo/addons/godot_rtmidi/macos/.gitkeep
+!demo/addons/godot_rtmidi/windows
+demo/addons/godot_rtmidi/windows/*
+!demo/addons/godot_rtmidi/windows/.gitkeep
+!demo/addons/godot_rtmidi/*.gdextension
+.sconsign*.dblite
+
+# Ignore custom.py
+custom.py
+
+# Ignore generated compile_commands.json
+compile_commands.json
+
+# Ignore files generated for documentation
+/src/gen
+
+# Binaries
+*.o
+*.os
+*.so
+*.obj
+*.bc
+*.pyc
+*.dblite
+*.pdb
+*.lib
+*.config
+*.creator
+*.creator.user
+*.files
+*.includes
+*.idb
+*.exp
+
+# Other stuff
+*.log
+
+# VSCode
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+
+# Jetbrains
+.idea/
+
+# Cmake
+cmake-build*
+CMakeUserPresets.json
+
+build/
+
 .DS_Store
