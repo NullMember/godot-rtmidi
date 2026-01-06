@@ -1,56 +1,110 @@
-# godot-cpp template
-This repository serves as a quickstart template for GDExtension development with Godot 4.0+.
+# godot-rtmidi
 
-## Contents
-* Preconfigured source files for C++ development of the GDExtension ([src/](./src/))
-* An empty Godot project in [demo/](./demo), to test the GDExtension
-* godot-cpp as a submodule (`godot-cpp/`)
-* GitHub Issues template ([.github/ISSUE_TEMPLATE.yml](./.github/ISSUE_TEMPLATE.yml))
-* GitHub CI/CD workflows to publish your library packages when creating a release ([.github/workflows/builds.yml](./.github/workflows/builds.yml))
-* An SConstruct file with various functions, such as boilerplate for [Adding documentation](https://docs.godotengine.org/en/stable/tutorials/scripting/cpp/gdextension_docs_system.html)
+Realtime MIDI IO extension for Godot game engine.
+This extension built using [rtmidi](https://github.com/thestk/rtmidi).
 
-## Usage - Template
+## How to use
 
-To use this template, log in to GitHub and click the green "Use this template" button at the top of the repository page. This will let you create a copy of this repository with a clean git history.
+godot-rtmidi exposes two classes to godot: `MidiIn` and `MidiOut`. You can use these classes to interact with MIDI devices. Here is an example:
 
-To get started with your new GDExtension, do the following:
+```gd
+extends Node
 
-* clone your repository to your local computer
-* initialize the godot-cpp git submodule via `git submodule update --init`
-* change the name of the compiled library file inside the [SConstruct](./SConstruct) file by modifying the `libname` string.
-  * change the paths of the to be loaded library name inside the [demo/bin/example.gdextension](./demo/bin/example.gdextension) file, by replacing `EXTENSION-NAME` with the name you chose for `libname`.
-* change the `entry_symbol` string inside [demo/bin/example.gdextension](./demo/bin/example.gdextension) file.
-  * rename the `example_library_init` function in [src/register_types.cpp](./src/register_types.cpp) to the same name you chose for `entry_symbol`.
-* change the name of the `demo/bin/example.gdextension` file
+var midi_in = MidiIn.new()
+var midi_out = MidiOut.new()
 
-Now, you can build the project with the following command:
+func _ready():
+    midi_in.open_port(0)
+    midi_in.midi_message.connect(_on_midi_message)
 
-```shell
-scons
+    midi_out.open_port(0)
+
+func _on_midi_message(delta, message):
+    print("MIDI message: ", message)
+    midi_out.send_message(message)
 ```
 
-If the build command worked, you can test it with the [demo](./demo) project. Import it into Godot, open it, and launch the main scene. You should see it print the following line in the console:
+This code will open the first MIDI input and output ports and echo all incoming messages to the output port. If you need to get sysex, realtime or sense messages, you should call  
 
 ```
-Type: 24
+midi_in.ignore_types(sysex: bool, time: bool, sense: bool)
 ```
 
-### Configuring an IDE
-You can develop your own extension with any text editor and by invoking scons on the command line, but if you want to work with an IDE (Integrated Development Environment), you can use a compilation database file called `compile_commands.json`. Most IDEs should automatically identify this file, and self-configure appropriately.
-To generate the database file, you can run one of the following commands in the project root directory:
-```shell
-# Generate compile_commands.json while compiling
-scons compiledb=yes
+method with appropriate arguments.  
 
-# Generate compile_commands.json without compiling
-scons compiledb=yes compile_commands.json
+If you need to list available ports, you can use `get_port_count()`, `get_port_name(port_number)` and `get_port_names()` methods. These methods are static, so you can call them without creating an instance of `MidiIn` or `MidiOut` classes. For example:
+
+```gd
+for i in range(MidiIn.get_port_count()):
+    print(MidiIn.get_port_name(i))
 ```
 
-## Usage - Actions
+or
 
-This repository comes with continuous integration (CI) through a GitHub action that tests building the GDExtension.
-It triggers automatically for each pushed change. You can find and edit it in [builds.yml](.github/workflows/ci.yml).
+```gd
+print(MidiOut.get_port_names())
+```
 
-There is also a workflow ([make_build.yml](.github/workflows/make_build.yml)) that builds the GDExtension for all supported platforms that you can use to create releases.
-You can trigger this workflow manually from the `Actions` tab on GitHub.
-After it is complete, you can find the file `godot-cpp-template.zip` in the `Artifacts` section of the workflow run.
+Same MIDI device could have different MidiIn and MidiOut port numbers. For example you can have MidiIn port 0 and MidiOut port 1 for the same device.
+  
+To send a message, you can use `send_message(message: PackedByteArray)` method. For example:
+
+```gd
+var message = PackedByteArray()
+message.append(0x90) # Note on
+message.append(60) # Note number
+message.append(127) # Velocity
+midi_out.send_message(message)
+```
+
+or
+
+```gd
+midi_out.send_message([0x90, 60, 127])
+```
+
+## API
+
+### MidiIn
+
+#### Methods
+
+- `open_port(port: int) -> void`: Open a MIDI input port.
+- `open_virtual_port(port_name: String) -> void`: Open a virtual MIDI input port.
+- `close_port() -> void`: Close the currently open MIDI input port.
+- `is_port_open() -> bool`: Check if a MIDI input port is open.
+- `ignore_types(sysex: bool, time: bool, sense: bool) -> void`: Ignore sysex, time and sense messages.
+
+- `static get_port_count() -> int`: Get the number of available MIDI input ports.
+- `static get_port_name(port: int) -> String`: Get the name of a MIDI input port.
+- `static get_port_names() -> PackedStringArray`: Get the names of all available MIDI input ports.
+
+#### Signals
+
+- `midi_message(delta: float, message: PackedByteArray)`: Emitted when a MIDI message is received.
+
+### MidiOut
+
+#### Methods
+
+- `open_port(port: int) -> void`: Open a MIDI output port.
+- `open_virtual_port(port_name: String) -> void`: Open a virtual MIDI output port.
+- `close_port() -> void`: Close the currently open MIDI output port.
+- `is_port_open() -> bool`: Check if a MIDI output port is open.
+- `send_message(message: PackedByteArray) -> void`: Send a MIDI message.
+
+- `static get_port_count() -> int`: Get the number of available MIDI output ports.
+- `static get_port_name(port: int) -> String`: Get the name of a MIDI output port.
+- `static get_port_names() -> PackedStringArray`: Get the names of all available MIDI output ports.
+
+## Installation
+
+Latest release can be downloaded from [releases](https://github.com/NullMember/godot-rtmidi/releases) page. Download the zip file and extract it to your project's `addons` directory.
+
+### MacOS Notes
+
+Because of MacOS binary not signed, you need to right click on the dylib file in lib/Darwin-universal and click open. Then you will see a dialog box that says the file is from an unidentified developer. Click open and the next time you run the project it will work.
+
+## Known issues
+
+- Adding MidiIn node directly to scene and connecting to midi_message signal will cause error. This is probably a threading error either in Godot or this extension. To avoid this, add MidiIn node to scene from code and connect to signal from code like example above. Thanks to @CsRic for reporting this [issue](https://github.com/NullMember/godot-rtmidi/issues/1).
