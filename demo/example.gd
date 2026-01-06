@@ -5,10 +5,10 @@ extends Node
 
 func _ready() -> void:
 	print(midi_in.get_port_names())
-	midi_in.open_port(3)
+	midi_in.open_port(0)
 	midi_in.ignore_types(false, false, false)
 	print(midi_out.get_port_names())
-	midi_out.open_port(3)
+	midi_out.open_port(0)
 
 func _process(delta):
 	pass

@@ -32,6 +32,8 @@ endif()
 set( RTMIDI_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE )
 set( RTMIDI_BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE )
 
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 add_subdirectory(extern/godot-cpp SYSTEM)
 add_subdirectory(extern/rtmidi)
 
@@ -43,6 +45,14 @@ include(GodotCPPModule)
 # The godot-cpp target has some of useful properties attached that can be retrieved like so.
 get_target_property(GODOTCPP_SUFFIX godot::cpp GODOTCPP_SUFFIX)
 get_target_property(GODOTCPP_PLATFORM godot::cpp GODOTCPP_PLATFORM)
+
+if(CMAKE_BUILD_TYPE MATCHES "Debug")
+    string(REPLACE "template_debug" "debug" GODOTCPP_SUFFIX "${GODOTCPP_SUFFIX}")
+elseif(CMAKE_BUILD_TYPE MATCHES "Release")
+    string(REPLACE "template_debug" "release" GODOTCPP_SUFFIX "${GODOTCPP_SUFFIX}")
+endif()
+
+message(STATUS ${GODOTCPP_SUFFIX})
 
 # Now we can specify our own project which will inherit any global cmake properties or variables that have been defined.
 project(godot-cpp-template
@@ -90,7 +100,7 @@ set_target_properties(${LIBNAME}
 
 set(GODOT_PROJECT_BINARY_DIR "${PROJECT_SOURCE_DIR}/${GODOT_PROJECT_DIR}/addons/${LIBNAME}/${GODOTCPP_PLATFORM}")
 
-message(STATUS "Copying built library to Godot project directory: ${GODOT_PROJECT_BINARY_DIR}/addons/${LIBNAME}/$<TARGET_FILE_NAME:${LIBNAME}>")
+message(STATUS "Copying built library to Godot project directory: ${GODOT_PROJECT_BINARY_DIR}")
 
 add_custom_command(TARGET ${LIBNAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_FILE:${LIBNAME}>" "${GODOT_PROJECT_BINARY_DIR}/$<TARGET_FILE_NAME:${LIBNAME}>"
