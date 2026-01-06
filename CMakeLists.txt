@@ -37,9 +37,10 @@ project( godot_rtmidi
 # Create our library
 add_library( ${PROJECT_NAME} SHARED )
 
-target_compile_features( ${PROJECT_NAME}
-    PRIVATE
-        cxx_std_17
+set_target_properties(
+    ${PROJECT_NAME}
+    PROPERTIES
+        CXX_STANDARD 17
 )
 
 # LIB_ARCH is the architecture being built. It is set to the build system's architecture.
