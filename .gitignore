@@ -1,5 +1,0 @@
-CMakeLists.txt.user
-.vscode/settings.json
-
-# MacOS specific files
-.DS_Store
