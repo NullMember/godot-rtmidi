@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="MidiOut" inherits="Node" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Sends MIDI output to hardware and software MIDI ports.
+	</brief_description>
+	<description>
+		[MidiOut] provides real-time MIDI output functionality using RtMidi. It lets you open physical MIDI ports or create virtual MIDI ports to send MIDI messages to synthesizers, DAWs, and other MIDI-capable software.
+
+		Use the static methods [method get_port_names] and [method get_port_count] to discover available MIDI output ports before opening a connection. Messages are sent immediately via [method send_message] once a port is open.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="open_port">
+			<return type="void" />
+			<param index="0" name="port_number" type="int" />
+			<description>
+				Opens a MIDI output port by its index number. Port indices are zero-based and can be determined using [method get_port_names] or [method get_port_count].
+			</description>
+		</method>
+		<method name="open_virtual_port">
+			<return type="void" />
+			<param index="0" name="port_name" type="String" />
+			<description>
+				Creates and opens a virtual MIDI output port with the specified name. Other applications can connect to this port to receive MIDI messages you send. The port name is shown in the MIDI port lists of other applications.
+			</description>
+		</method>
+		<method name="close_port">
+			<return type="void" />
+			<description>
+				Closes the currently open MIDI output port. After closing, open another port before sending additional MIDI messages.
+			</description>
+		</method>
+		<method name="is_port_open">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] if a MIDI output port is currently open, [code]false[/code] otherwise.
+			</description>
+		</method>
+		<method name="get_port_count" qualifiers="static">
+			<return type="int" />
+			<description>
+				Returns the number of available MIDI output ports on the system.
+			</description>
+		</method>
+		<method name="get_port_name" qualifiers="static">
+			<return type="String" />
+			<param index="0" name="port_number" type="int" />
+			<description>
+				Returns the name of the MIDI output port at the specified index. Returns an empty string if the port index is invalid.
+			</description>
+		</method>
+		<method name="get_port_names" qualifiers="static">
+			<return type="PackedStringArray" />
+			<description>
+				Returns an array containing the names of all available MIDI output ports on the system.
+			</description>
+		</method>
+		<method name="send_message">
+			<return type="void" />
+			<param index="0" name="message" type="PackedByteArray" />
+			<description>
+				Sends a raw MIDI message. The [param message] should contain the complete MIDI packet (e.g. status byte and data bytes). If the array is empty, the call is ignored. Ensure a port is open before calling.
+			</description>
+		</method>
+	</methods>
+	<signals>
+		<signal name="midi_error">
+			<param index="0" name="error_type" type="int" />
+			<param index="1" name="error_message" type="String" />
+			<description>
+				Emitted when a MIDI-related error occurs. [param error_type] is one of the [enum MidiError] constants, and [param error_message] is a human-readable description.
+			</description>
+		</signal>
+	</signals>
+	<constants>
+		<constant name="ERROR_WARNING" value="0" enum="MidiError">
+			A warning-level error occurred.
+		</constant>
+		<constant name="ERROR_DEBUG_WARNING" value="1" enum="MidiError">
+			A debug-level warning occurred.
+		</constant>
+		<constant name="ERROR_UNSPECIFIED" value="2" enum="MidiError">
+			An unspecified error occurred.
+		</constant>
+		<constant name="ERROR_NO_DEVICES_FOUND" value="3" enum="MidiError">
+			No MIDI devices were found on the system.
+		</constant>
+		<constant name="ERROR_INVALID_DEVICE" value="4" enum="MidiError">
+			The specified MIDI device is invalid.
+		</constant>
+		<constant name="ERROR_MEMORY_ERROR" value="5" enum="MidiError">
+			A memory allocation error occurred.
+		</constant>
+		<constant name="ERROR_INVALID_PARAMETER" value="6" enum="MidiError">
+			An invalid parameter was passed to a method.
+		</constant>
+		<constant name="ERROR_INVALID_USE" value="7" enum="MidiError">
+			The MIDI object is being used incorrectly.
+		</constant>
+		<constant name="ERROR_DRIVER_ERROR" value="8" enum="MidiError">
+			A driver-level error occurred.
+		</constant>
+		<constant name="ERROR_SYSTEM_ERROR" value="9" enum="MidiError">
+			A system-level error occurred.
+		</constant>
+		<constant name="ERROR_THREAD_ERROR" value="10" enum="MidiError">
+			A threading error occurred.
+		</constant>
+	</constants>
+</class>

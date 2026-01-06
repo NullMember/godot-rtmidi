@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<class name="MidiIn" inherits="Node" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://raw.githubusercontent.com/godotengine/godot/master/doc/class.xsd">
+	<brief_description>
+		Receives MIDI input from hardware and software MIDI ports.
+	</brief_description>
+	<description>
+		[MidiIn] provides real-time MIDI input functionality using RtMidi. It allows you to open physical MIDI ports or create virtual MIDI ports to receive MIDI messages from controllers, keyboards, and other MIDI devices.
+
+		MIDI messages are received asynchronously through the [signal midi_message] signal. You can also poll for messages using [method get_message] if preferred.
+
+		Use the static methods [method get_port_names] and [method get_port_count] to discover available MIDI input ports before opening a connection.
+	</description>
+	<tutorials>
+	</tutorials>
+	<methods>
+		<method name="open_port">
+			<return type="void" />
+			<param index="0" name="port_number" type="int" />
+			<description>
+				Opens a MIDI input port by its index number. Port indices are zero-based and can be determined using [method get_port_names] or [method get_port_count].
+			</description>
+		</method>
+		<method name="open_virtual_port">
+			<return type="void" />
+			<param index="0" name="port_name" type="String" />
+			<description>
+				Creates and opens a virtual MIDI input port with the specified name. This allows other applications to connect to this port and send MIDI messages. The port name is displayed in MIDI port lists of other applications.
+			</description>
+		</method>
+		<method name="close_port">
+			<return type="void" />
+			<description>
+				Closes the currently open MIDI input port. After closing, you must open another port before receiving MIDI messages again.
+			</description>
+		</method>
+		<method name="is_port_open">
+			<return type="bool" />
+			<description>
+				Returns [code]true[/code] if a MIDI input port is currently open, [code]false[/code] otherwise.
+			</description>
+		</method>
+		<method name="get_port_count" qualifiers="static">
+			<return type="int" />
+			<description>
+				Returns the number of available MIDI input ports on the system.
+			</description>
+		</method>
+		<method name="get_port_name" qualifiers="static">
+			<return type="String" />
+			<param index="0" name="port_number" type="int" />
+			<description>
+				Returns the name of the MIDI input port at the specified index. Returns an empty string if the port index is invalid.
+			</description>
+		</method>
+		<method name="get_port_names" qualifiers="static">
+			<return type="PackedStringArray" />
+			<description>
+				Returns an array containing the names of all available MIDI input ports on the system.
+			</description>
+		</method>
+		<method name="ignore_types">
+			<return type="void" />
+			<param index="0" name="midi_sysex" type="bool" default="true" />
+			<param index="1" name="midi_time" type="bool" default="true" />
+			<param index="2" name="midi_sense" type="bool" default="true" />
+			<description>
+				Configures which types of MIDI messages to ignore. By default, system exclusive (sysex), timing clock, and active sensing messages are ignored to reduce message overhead. Set parameters to [code]false[/code] to receive these message types.
+			</description>
+		</method>
+		<method name="get_message">
+			<return type="PackedByteArray" />
+			<description>
+				Polls for a pending MIDI message in the input buffer and returns it as a [PackedByteArray]. Returns an empty array if no messages are pending. This method is useful for polling-based input instead of using signal callbacks.
+			</description>
+		</method>
+		<method name="set_buffer_size">
+			<return type="void" />
+			<param index="0" name="buffer_size" type="int" />
+			<param index="1" name="buffer_count" type="int" />
+			<description>
+				Sets the internal MIDI message buffer size. [param buffer_size] is the size of each buffer in bytes, and [param buffer_count] is the number of buffers to allocate. Larger buffers reduce the chance of message loss on high-volume MIDI input, but use more memory.
+			</description>
+		</method>
+	</methods>
+	<signals>
+		<signal name="midi_message">
+			<param index="0" name="deltatime" type="float" />
+			<param index="1" name="message" type="PackedByteArray" />
+			<description>
+				Emitted when a MIDI message is received. [param deltatime] is the time in seconds since the last message, and [param message] is the MIDI message data as a byte array.
+			</description>
+		</signal>
+		<signal name="midi_error">
+			<param index="0" name="error_type" type="int" />
+			<param index="1" name="error_message" type="String" />
+			<description>
+				Emitted when a MIDI-related error occurs. [param error_type] is one of the [enum MidiError] constants, and [param error_message] is a human-readable error description.
+			</description>
+		</signal>
+	</signals>
+	<constants>
+		<constant name="ERROR_WARNING" value="0" enum="MidiError">
+			A warning-level error occurred.
+		</constant>
+		<constant name="ERROR_DEBUG_WARNING" value="1" enum="MidiError">
+			A debug-level warning occurred.
+		</constant>
+		<constant name="ERROR_UNSPECIFIED" value="2" enum="MidiError">
+			An unspecified error occurred.
+		</constant>
+		<constant name="ERROR_NO_DEVICES_FOUND" value="3" enum="MidiError">
+			No MIDI devices were found on the system.
+		</constant>
+		<constant name="ERROR_INVALID_DEVICE" value="4" enum="MidiError">
+			The specified MIDI device is invalid.
+		</constant>
+		<constant name="ERROR_MEMORY_ERROR" value="5" enum="MidiError">
+			A memory allocation error occurred.
+		</constant>
+		<constant name="ERROR_INVALID_PARAMETER" value="6" enum="MidiError">
+			An invalid parameter was passed to a method.
+		</constant>
+		<constant name="ERROR_INVALID_USE" value="7" enum="MidiError">
+			The MIDI object is being used incorrectly.
+		</constant>
+		<constant name="ERROR_DRIVER_ERROR" value="8" enum="MidiError">
+			A driver-level error occurred.
+		</constant>
+		<constant name="ERROR_SYSTEM_ERROR" value="9" enum="MidiError">
+			A system-level error occurred.
+		</constant>
+		<constant name="ERROR_THREAD_ERROR" value="10" enum="MidiError">
+			A threading error occurred.
+		</constant>
+	</constants>
+</class>
