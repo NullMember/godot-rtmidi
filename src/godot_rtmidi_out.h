@@ -11,7 +11,6 @@ class MidiOut : public Node {
 
 private:
     RtMidiOut* midi_out;
-    void (*error_callback)(RtMidiError::Type type, const std::string &error_text, void* user_data);
     static void midi_error_callback(RtMidiError::Type type, const std::string &error_text, void* user_data);
 
 protected:

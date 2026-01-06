@@ -8,3 +8,7 @@ script = ExtResource("1_jdh55")
 [node name="MidiIn" type="MidiIn" parent="."]
 
 [node name="MidiOut" type="MidiOut" parent="."]
+
+[connection signal="midi_error" from="MidiIn" to="." method="_on_midi_in_midi_error"]
+[connection signal="midi_message" from="MidiIn" to="." method="_on_midi_in_midi_message"]
+[connection signal="midi_error" from="MidiOut" to="." method="_on_midi_out_midi_error"]
