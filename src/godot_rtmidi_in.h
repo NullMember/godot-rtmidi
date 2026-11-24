@@ -33,6 +33,7 @@ public:
     static int get_port_count();
     static String get_port_name(int port_number);
     static PackedStringArray get_port_names();
+    static Error show_bluetooth_devices();
     void ignore_types(bool midi_sysex = true, bool midi_time = true, bool midi_sense = true);
     PackedByteArray get_message();
     void set_buffer_size(unsigned int buffer_size, unsigned int buffer_count);

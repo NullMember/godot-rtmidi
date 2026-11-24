@@ -32,6 +32,7 @@
 			<description>
 				Creates and opens a virtual MIDI input port with the specified name. This allows other applications to connect to this port and send MIDI messages. The port name is displayed in MIDI port lists of other applications.
 				Virtual ports are only supported on macOS, iOS and Linux. On Windows, Android and other platforms this returns [constant ERR_UNAVAILABLE]; on Windows, create a virtual port with a loopback driver such as loopMIDI and open it with [method open_port] instead.
+				On iOS, the app must declare the [code]audio[/code] background mode, or this returns [constant ERR_CANT_OPEN]. Add [code]&lt;key&gt;UIBackgroundModes&lt;/key&gt;&lt;array&gt;&lt;string&gt;audio&lt;/string&gt;&lt;/array&gt;[/code] to [b]Additional Plist Content[/b] in the iOS export preset.
 				Returns [constant OK] on success, [constant ERR_ALREADY_IN_USE] if a port is already open, or [constant ERR_CANT_OPEN] if the port could not be created.
 			</description>
 		</method>
@@ -96,6 +97,21 @@
 			<param index="1" name="buffer_count" type="int" />
 			<description>
 				Sets the internal MIDI message buffer size. [param buffer_size] is the size of each buffer in bytes, and [param buffer_count] is the number of buffers to allocate. Larger buffers reduce the chance of message loss on high-volume MIDI input, but use more memory.
+			</description>
+		</method>
+		<method name="show_bluetooth_devices" qualifiers="static">
+			<return type="int" enum="Error" />
+			<description>
+				Shows the system's list of Bluetooth MIDI devices, where the user can connect or disconnect devices. A connected device then shows up in [method MidiIn.get_port_names] and [method MidiOut.get_port_names] like any other port, in this and every other app, until it is disconnected. The list closes when the user taps [b]Done[/b]; check the port list again afterwards.
+				This is only available on iOS, where an app must show this list to connect Bluetooth MIDI devices. On other platforms it returns [constant ERR_UNAVAILABLE]; on macOS, connect Bluetooth MIDI devices in Audio MIDI Setup instead.
+				The app must declare why it uses Bluetooth, or iOS terminates it. Add [code]&lt;key&gt;NSBluetoothAlwaysUsageDescription&lt;/key&gt;&lt;string&gt;Connects to Bluetooth MIDI devices.&lt;/string&gt;[/code] to [b]Additional Plist Content[/b] in the iOS export preset. Without it, this method returns [constant ERR_UNCONFIGURED] instead of showing the list.
+				Returns [constant OK] when the list is shown, or [constant ERR_BUSY] if it is already showing.
+				[codeblock]
+				func _on_bluetooth_button_pressed():
+				    var err := MidiIn.show_bluetooth_devices()
+				    if err != OK:
+				        print("Can't show Bluetooth MIDI devices: ", error_string(err))
+				[/codeblock]
 			</description>
 		</method>
 	</methods>

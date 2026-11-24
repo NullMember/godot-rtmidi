@@ -1,5 +1,6 @@
 #include "godot_rtmidi_out.h"
 #include "rtmidi_common.h"
+#include "bluetooth_midi.h"
 
 #include <godot_cpp/core/class_db.hpp>
 
@@ -16,6 +17,7 @@ void MidiOut::_bind_methods() {
 	ClassDB::bind_static_method("MidiOut", D_METHOD("get_port_count"), &MidiOut::get_port_count);
 	ClassDB::bind_static_method("MidiOut", D_METHOD("get_port_name", "port_number"), &MidiOut::get_port_name);
 	ClassDB::bind_static_method("MidiOut", D_METHOD("get_port_names"), &MidiOut::get_port_names);
+	ClassDB::bind_static_method("MidiOut", D_METHOD("show_bluetooth_devices"), &MidiOut::show_bluetooth_devices);
 	ClassDB::bind_method(D_METHOD("send_message", "message"), &MidiOut::send_message);
 	ClassDB::bind_integer_constant("MidiOut", "MidiError", "ERROR_WARNING", static_cast<int>(RtMidiError::WARNING));
 	ClassDB::bind_integer_constant("MidiOut", "MidiError", "ERROR_DEBUG_WARNING", static_cast<int>(RtMidiError::DEBUG_WARNING));
@@ -120,6 +122,10 @@ PackedStringArray MidiOut::get_port_names() {
 	}
 	delete _midi_out;
 	return names;
+}
+
+Error MidiOut::show_bluetooth_devices() {
+	return godot_rtmidi::show_bluetooth_midi_devices();
 }
 
 Error MidiOut::send_message(PackedByteArray message) {

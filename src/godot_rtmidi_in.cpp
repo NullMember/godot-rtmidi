@@ -1,5 +1,6 @@
 #include "godot_rtmidi_in.h"
 #include "rtmidi_common.h"
+#include "bluetooth_midi.h"
 
 #include <godot_cpp/core/class_db.hpp>
 
@@ -16,6 +17,7 @@ void MidiIn::_bind_methods() {
 	ClassDB::bind_static_method("MidiIn", D_METHOD("get_port_count"), &MidiIn::get_port_count);
 	ClassDB::bind_static_method("MidiIn", D_METHOD("get_port_name", "port_number"), &MidiIn::get_port_name);
 	ClassDB::bind_static_method("MidiIn", D_METHOD("get_port_names"), &MidiIn::get_port_names);
+	ClassDB::bind_static_method("MidiIn", D_METHOD("show_bluetooth_devices"), &MidiIn::show_bluetooth_devices);
 	ClassDB::bind_method(D_METHOD("ignore_types", "midi_sysex", "midi_time", "midi_sense"), &MidiIn::ignore_types, DEFVAL(true), DEFVAL(true), DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("get_message"), &MidiIn::get_message);
 	ClassDB::bind_method(D_METHOD("set_buffer_size", "buffer_size", "buffer_count"), &MidiIn::set_buffer_size);
@@ -154,6 +156,10 @@ PackedStringArray MidiIn::get_port_names() {
 	}
 	delete _midi_in;
 	return names;
+}
+
+Error MidiIn::show_bluetooth_devices() {
+	return godot_rtmidi::show_bluetooth_midi_devices();
 }
 
 void MidiIn::ignore_types(bool midi_sysex, bool midi_time, bool midi_sense) {
