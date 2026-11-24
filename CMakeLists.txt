@@ -1,5 +1,5 @@
-# Using the same minimum as the godot-cpp project
-cmake_minimum_required(VERSION 3.17)
+# RtMidi requires CMake 3.24
+cmake_minimum_required(VERSION 3.24)
 
 # Silence unused variable warning when specified from toolchain
 if(CMAKE_C_COMPILER)
@@ -8,29 +8,63 @@ endif()
 set(LIBNAME "godot_rtmidi" CACHE STRING "The name of the library")
 set(GODOT_PROJECT_DIR "demo" CACHE STRING "The directory of a Godot project folder")
 
-if ( APPLE )
-    set( CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE STRING "" )
+# Oldest Godot version we support. Must match `compatibility_minimum` in
+# demo/addons/godot_rtmidi/godot_rtmidi.gdextension. An extension built against
+# a newer API will not load in older Godot versions.
+if(NOT GODOTCPP_API_VERSION)
+    set(GODOTCPP_API_VERSION "4.3" CACHE STRING "The Godot API version to target" FORCE)
 endif()
+
+# Build universal macOS binaries by default. This must be set before project().
+# APPLE reflects the host at this point, and a toolchain file only sets
+# CMAKE_SYSTEM_NAME inside project(), so skip this when cross-compiling (iOS, Android).
+if(CMAKE_HOST_APPLE AND NOT CMAKE_TOOLCHAIN_FILE AND (NOT CMAKE_SYSTEM_NAME OR CMAKE_SYSTEM_NAME STREQUAL "Darwin"))
+    set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE STRING "")
+endif()
+
+project(godot-rtmidi
+    VERSION 0.0.4
+    DESCRIPTION "Realtime MIDI IO extension for Godot, built on RtMidi."
+    HOMEPAGE_URL "https://github.com/NullMember/godot-rtmidi"
+    LANGUAGES C CXX
+)
 
 # Make sure all the dependencies are satisfied
 find_package(Python3 3.4 REQUIRED)
 find_program(GIT git REQUIRED)
 
-# Ensure godot-cpp submodule has been updated
-if(NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/extern/godot-cpp/src")
-    message(NOTICE "godot-cpp bindings source not found")
-    message(NOTICE "initializing/updating the godot-cpp submodule...")
-
-    # update the c++ bindings submodule to populate it with the necessary source for the library
+# Ensure the submodules have been checked out
+if(NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/extern/godot-cpp/src" OR NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/extern/rtmidi/RtMidi.cpp")
+    message(NOTICE "Submodules not found, initializing/updating them...")
     execute_process(
-        COMMAND git submodule update --init godot-cpp
+        COMMAND ${GIT} submodule update --init --recursive extern/godot-cpp extern/rtmidi
         WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
         COMMAND_ERROR_IS_FATAL ANY
     )
 endif()
 
-set( RTMIDI_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE )
-set( RTMIDI_BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE )
+### RtMidi configuration
+set(RTMIDI_BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(RTMIDI_BUILD_STATIC_LIBS ON CACHE BOOL "" FORCE)
+set(RTMIDI_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+
+# JACK support is opt-in, Linux only. Linking JACK makes libjack a hard runtime
+# dependency: the extension fails to load on systems without it. Official
+# builds are ALSA only; users who want JACK build with -DGODOT_RTMIDI_JACK=ON.
+# RtMidi enables JACK by itself whenever it finds libjack, so always set it explicitly.
+option(GODOT_RTMIDI_JACK "Linux only: add the JACK backend (libjack becomes required at runtime)" OFF)
+if(GODOT_RTMIDI_JACK AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    set(RTMIDI_API_JACK ON CACHE BOOL "" FORCE)
+else()
+    set(RTMIDI_API_JACK OFF CACHE BOOL "" FORCE)
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    # RtMidi only enables ALSA when it happens to find the development files.
+    # Require it, so a build machine without libasound2-dev fails instead of
+    # silently producing a binary with no usable MIDI backend.
+    set(RTMIDI_API_ALSA ON CACHE BOOL "" FORCE)
+endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
@@ -45,22 +79,6 @@ include(GodotCPPModule)
 # The godot-cpp target has some of useful properties attached that can be retrieved like so.
 get_target_property(GODOTCPP_SUFFIX godot::cpp GODOTCPP_SUFFIX)
 get_target_property(GODOTCPP_PLATFORM godot::cpp GODOTCPP_PLATFORM)
-
-if(CMAKE_BUILD_TYPE MATCHES "Debug")
-    string(REPLACE "template_debug" "debug" GODOTCPP_SUFFIX "${GODOTCPP_SUFFIX}")
-elseif(CMAKE_BUILD_TYPE MATCHES "Release")
-    string(REPLACE "template_debug" "release" GODOTCPP_SUFFIX "${GODOTCPP_SUFFIX}")
-endif()
-
-message(STATUS ${GODOTCPP_SUFFIX})
-
-# Now we can specify our own project which will inherit any global cmake properties or variables that have been defined.
-project(godot-cpp-template
-    VERSION 1.0
-    DESCRIPTION "This repository serves as a quickstart template for GDExtension development with Godot 4.0+."
-    HOMEPAGE_URL "https://github.com/enetheru/godot-cpp-template/tree/main"
-    LANGUAGES CXX
-)
 
 add_library(${LIBNAME} SHARED)
 
@@ -93,6 +111,7 @@ set_target_properties(${LIBNAME}
     PROPERTIES
     # The generator expression here prevents msvc from adding a Debug or Release subdir.
     RUNTIME_OUTPUT_DIRECTORY "$<1:${PROJECT_SOURCE_DIR}/bin/${GODOTCPP_PLATFORM}>"
+    LIBRARY_OUTPUT_DIRECTORY "$<1:${PROJECT_SOURCE_DIR}/bin/${GODOTCPP_PLATFORM}>"
 
     PREFIX ""
     OUTPUT_NAME "${LIBNAME}${GODOTCPP_SUFFIX}"
@@ -100,6 +119,7 @@ set_target_properties(${LIBNAME}
 
 set(GODOT_PROJECT_BINARY_DIR "${PROJECT_SOURCE_DIR}/${GODOT_PROJECT_DIR}/addons/${LIBNAME}/${GODOTCPP_PLATFORM}")
 
+message(STATUS "Godot API version: ${GODOTCPP_API_VERSION}")
 message(STATUS "Copying built library to Godot project directory: ${GODOT_PROJECT_BINARY_DIR}")
 
 add_custom_command(TARGET ${LIBNAME} POST_BUILD

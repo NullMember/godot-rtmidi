@@ -16,6 +16,9 @@ demo/addons/godot_rtmidi/macos/*
 !demo/addons/godot_rtmidi/windows
 demo/addons/godot_rtmidi/windows/*
 !demo/addons/godot_rtmidi/windows/.gitkeep
+!demo/addons/godot_rtmidi/ios
+demo/addons/godot_rtmidi/ios/*
+!demo/addons/godot_rtmidi/ios/.gitkeep
 !demo/addons/godot_rtmidi/*.gdextension
 
 # Ignore custom.py
@@ -60,6 +63,7 @@ compile_commands.json
 cmake-build*
 CMakeUserPresets.json
 
-build/
+build*/
+bin/
 
 .DS_Store
