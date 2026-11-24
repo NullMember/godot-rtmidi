@@ -133,4 +133,4 @@ Build options:
 
 ## License
 
-godot-rtmidi is released into the public domain under the [Unlicense](LICENSE.md). The release zip also includes the licenses of [RtMidi](https://github.com/thestk/rtmidi) and [godot-cpp](https://github.com/godotengine/godot-cpp), which are linked into the library.
+godot-rtmidi is released under the [MIT License](LICENSE.md). The release zip also includes the licenses of [RtMidi](https://github.com/thestk/rtmidi) and [godot-cpp](https://github.com/godotengine/godot-cpp), which are linked into the library.
