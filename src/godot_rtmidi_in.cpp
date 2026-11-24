@@ -1,7 +1,12 @@
 #include "godot_rtmidi_in.h"
+#include "rtmidi_common.h"
+
 #include <godot_cpp/core/class_db.hpp>
 
 using namespace godot;
+using namespace godot_rtmidi;
+
+#define MIDI_IN_UNAVAILABLE "MIDI input is not available: RtMidi failed to initialize (see the earlier error)."
 
 void MidiIn::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("open_port", "port_number"), &MidiIn::open_port);
@@ -32,31 +37,8 @@ void MidiIn::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("midi_error", PropertyInfo(Variant::INT, "error_type"), PropertyInfo(Variant::STRING, "error_message")));
 }
 
-#define MIDI_IN_UNAVAILABLE "MIDI input is not available: RtMidi failed to initialize (see the earlier error)."
-
-// RtMidi throws RtMidiError from its constructor on fatal errors (e.g. the MIDI
-// driver can't be opened). Exceptions must never reach Godot, so every
-// construction goes through here. Returns nullptr on failure.
-static void print_error_callback(RtMidiError::Type type, const std::string &error_text, void *user_data) {
-	ERR_PRINT(String("MidiIn: ") + String::utf8(error_text.c_str()));
-}
-
-static RtMidiIn *create_rtmidi_in() {
-	try {
-		RtMidiIn *rtmidi = new RtMidiIn();
-		// Once an error callback is set, RtMidi reports errors through it instead of throwing.
-		rtmidi->setErrorCallback(print_error_callback, nullptr);
-		return rtmidi;
-	} catch (const RtMidiError &error) {
-		ERR_PRINT(String("MidiIn: failed to initialize RtMidi: ") + String::utf8(error.what()));
-	} catch (const std::exception &error) {
-		ERR_PRINT(String("MidiIn: failed to initialize RtMidi: ") + String::utf8(error.what()));
-	}
-	return nullptr;
-}
-
 MidiIn::MidiIn() {
-	midi_in = create_rtmidi_in();
+	midi_in = create_rtmidi<RtMidiIn>("MidiIn");
 	if (!midi_in) {
 		return;
 	}
@@ -99,30 +81,54 @@ bool MidiIn::is_using_signals() const {
 	return use_signals;
 }
 
-void MidiIn::open_port(int port_number) {
-	ERR_FAIL_NULL_MSG(midi_in, MIDI_IN_UNAVAILABLE);
+Error MidiIn::open_port(int port_number) {
+	ERR_FAIL_NULL_V_MSG(midi_in, ERR_UNAVAILABLE, MIDI_IN_UNAVAILABLE);
+	ERR_FAIL_COND_V_MSG(is_port_open(), ERR_ALREADY_IN_USE, "A MIDI input port is already open. Call close_port() first.");
+	int port_count = midi_in->getPortCount();
+	ERR_FAIL_COND_V_MSG(port_count == 0, ERR_CANT_OPEN, "No MIDI input ports are available.");
+	ERR_FAIL_INDEX_V_MSG(port_number, port_count, ERR_INVALID_PARAMETER, vformat("MIDI input port %d does not exist (%d ports available).", port_number, port_count));
 	midi_in->openPort(port_number);
+	// RtMidi reports failures through the error callback; check the result.
+	return midi_in->isPortOpen() ? OK : ERR_CANT_OPEN;
 }
 
-void MidiIn::open_virtual_port(String port_name) {
-	ERR_FAIL_NULL_MSG(midi_in, MIDI_IN_UNAVAILABLE);
+Error MidiIn::open_virtual_port(String port_name) {
+	ERR_FAIL_NULL_V_MSG(midi_in, ERR_UNAVAILABLE, MIDI_IN_UNAVAILABLE);
+	ERR_FAIL_COND_V_MSG(is_port_open(), ERR_ALREADY_IN_USE, "A MIDI input port is already open. Call close_port() first.");
+	RtMidi::Api api = midi_in->getCurrentApi();
+	ERR_FAIL_COND_V_MSG(!api_supports_virtual_ports(api), ERR_UNAVAILABLE, virtual_ports_unsupported_message(api));
+	// RtMidi's isPortOpen() doesn't cover virtual ports, and failures are only
+	// reported through the error callback.
+	error_raised = false;
 	midi_in->openVirtualPort(port_name.utf8().get_data());
+	if (error_raised) {
+		return ERR_CANT_OPEN;
+	}
+	virtual_port_open = true;
+	return OK;
 }
 
-void MidiIn::close_port() {
-	ERR_FAIL_NULL_MSG(midi_in, MIDI_IN_UNAVAILABLE);
+Error MidiIn::close_port() {
+	ERR_FAIL_NULL_V_MSG(midi_in, ERR_UNAVAILABLE, MIDI_IN_UNAVAILABLE);
+	// Closing when nothing is open is harmless, so don't print an error.
+	if (!is_port_open()) {
+		return ERR_DOES_NOT_EXIST;
+	}
+	// Closes both a regular and a virtual port.
 	midi_in->closePort();
+	virtual_port_open = false;
+	return OK;
 }
 
 bool MidiIn::is_port_open() {
 	if (!midi_in) {
 		return false;
 	}
-	return midi_in->isPortOpen();
+	return virtual_port_open || midi_in->isPortOpen();
 }
 
 int MidiIn::get_port_count() {
-	RtMidiIn *_midi_in = create_rtmidi_in();
+	RtMidiIn *_midi_in = create_rtmidi<RtMidiIn>("MidiIn");
 	ERR_FAIL_NULL_V_MSG(_midi_in, 0, MIDI_IN_UNAVAILABLE);
 	int count = _midi_in->getPortCount();
 	delete _midi_in;
@@ -130,7 +136,8 @@ int MidiIn::get_port_count() {
 }
 
 String MidiIn::get_port_name(int port_number) {
-	RtMidiIn *_midi_in = create_rtmidi_in();
+	ERR_FAIL_COND_V_MSG(port_number < 0, String(), vformat("Invalid MIDI input port number %d.", port_number));
+	RtMidiIn *_midi_in = create_rtmidi<RtMidiIn>("MidiIn");
 	ERR_FAIL_NULL_V_MSG(_midi_in, String(), MIDI_IN_UNAVAILABLE);
 	// Port names come from the OS as UTF-8.
 	String name = String::utf8(_midi_in->getPortName(port_number).c_str());
@@ -139,7 +146,7 @@ String MidiIn::get_port_name(int port_number) {
 }
 
 PackedStringArray MidiIn::get_port_names() {
-	RtMidiIn *_midi_in = create_rtmidi_in();
+	RtMidiIn *_midi_in = create_rtmidi<RtMidiIn>("MidiIn");
 	ERR_FAIL_NULL_V_MSG(_midi_in, PackedStringArray(), MIDI_IN_UNAVAILABLE);
 	PackedStringArray names;
 	for (unsigned int i = 0; i < _midi_in->getPortCount(); i++) {
@@ -172,8 +179,8 @@ void MidiIn::set_buffer_size(unsigned int buffer_size, unsigned int buffer_count
 	midi_in->setBufferSize(buffer_size, buffer_count);
 }
 
-void MidiIn::midi_message_callback(double deltatime, std::vector<unsigned char>* message, void* user_data) {
-	MidiIn* midi_in = (MidiIn*)user_data;
+void MidiIn::midi_message_callback(double deltatime, std::vector<unsigned char> *message, void *user_data) {
+	MidiIn *midi_in = static_cast<MidiIn *>(user_data);
 	PackedByteArray packed_message;
 	packed_message.resize(message->size());
 	for (unsigned int i = 0; i < message->size(); i++) {
@@ -182,8 +189,8 @@ void MidiIn::midi_message_callback(double deltatime, std::vector<unsigned char>*
 	midi_in->call_deferred("emit_signal", "midi_message", deltatime, packed_message);
 }
 
-void MidiIn::midi_error_callback(RtMidiError::Type type, const std::string &error_text, void* user_data) {
-	MidiIn* midi_in = (MidiIn*)user_data;
-	_err_print_error("MidiIn", "godot_rtmidi_in.cpp", 0, String::utf8(error_text.c_str()), false, false);
-	midi_in->call_deferred("emit_signal", "midi_error", static_cast<int>(type), String::utf8(error_text.c_str()));
+void MidiIn::midi_error_callback(RtMidiError::Type type, const std::string &error_text, void *user_data) {
+	MidiIn *midi_in = static_cast<MidiIn *>(user_data);
+	midi_in->error_raised = true;
+	report_rtmidi_error(midi_in, "MidiIn", type, error_text);
 }

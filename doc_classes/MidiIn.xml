@@ -14,29 +14,38 @@
 	</tutorials>
 	<methods>
 		<method name="open_port">
-			<return type="void" />
+			<return type="int" enum="Error" />
 			<param index="0" name="port_number" type="int" />
 			<description>
 				Opens a MIDI input port by its index number. Port indices are zero-based and can be determined using [method get_port_names] or [method get_port_count].
+				Returns [constant OK] on success, [constant ERR_INVALID_PARAMETER] if [param port_number] doesn't exist, [constant ERR_ALREADY_IN_USE] if a port is already open, [constant ERR_CANT_OPEN] if no ports are available or the port could not be opened, or [constant ERR_UNAVAILABLE] if MIDI input could not be initialized.
+				[codeblock]
+				var err = midi_in.open_port(0)
+				if err != OK:
+				    print("Could not open MIDI input: ", error_string(err))
+				[/codeblock]
 			</description>
 		</method>
 		<method name="open_virtual_port">
-			<return type="void" />
+			<return type="int" enum="Error" />
 			<param index="0" name="port_name" type="String" />
 			<description>
 				Creates and opens a virtual MIDI input port with the specified name. This allows other applications to connect to this port and send MIDI messages. The port name is displayed in MIDI port lists of other applications.
+				Virtual ports are only supported on macOS, iOS and Linux. On Windows, Android and other platforms this returns [constant ERR_UNAVAILABLE]; on Windows, create a virtual port with a loopback driver such as loopMIDI and open it with [method open_port] instead.
+				Returns [constant OK] on success, [constant ERR_ALREADY_IN_USE] if a port is already open, or [constant ERR_CANT_OPEN] if the port could not be created.
 			</description>
 		</method>
 		<method name="close_port">
-			<return type="void" />
+			<return type="int" enum="Error" />
 			<description>
-				Closes the currently open MIDI input port. After closing, you must open another port before receiving MIDI messages again.
+				Closes the open MIDI input port, regular or virtual. After closing, you must open another port before receiving MIDI messages again.
+				Returns [constant OK], or [constant ERR_DOES_NOT_EXIST] without printing an error if no port was open.
 			</description>
 		</method>
 		<method name="is_port_open">
 			<return type="bool" />
 			<description>
-				Returns [code]true[/code] if a MIDI input port is currently open, [code]false[/code] otherwise.
+				Returns [code]true[/code] if a MIDI input port, regular or virtual, is currently open, [code]false[/code] otherwise.
 			</description>
 		</method>
 		<method name="get_port_count" qualifiers="static">
@@ -107,7 +116,8 @@
 			<param index="0" name="error_type" type="int" />
 			<param index="1" name="error_message" type="String" />
 			<description>
-				Emitted when a MIDI-related error occurs. [param error_type] is one of the [enum MidiError] constants, and [param error_message] is a human-readable error description.
+				Emitted when RtMidi reports an error or warning. [param error_type] is one of the [enum MidiError] constants, and [param error_message] is a human-readable error description.
+				If nothing is connected to this signal, the error is printed to the console instead. Once you connect to it, handling the error is up to you. Errors caused by invalid method arguments are always printed and reported through return values, not this signal.
 			</description>
 		</signal>
 	</signals>

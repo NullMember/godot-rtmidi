@@ -104,6 +104,7 @@ target_sources(${LIBNAME}
     src/godot_rtmidi_in.h
     src/godot_rtmidi_out.cpp
     src/godot_rtmidi_out.h
+    src/rtmidi_common.h
 )
 
 # Fetch a list of the xml files to use for documentation and add to our target
