@@ -24,10 +24,6 @@ Download the latest zip from the [releases](https://github.com/NullMember/godot-
 
 When updating from an older version, replace the whole `addons/godot_rtmidi/` folder, including `godot_rtmidi.gdextension`.
 
-### macOS
-
-The macOS library is not signed. If macOS blocks it, right-click `addons/godot_rtmidi/macos/godot_rtmidi.macos.template_debug.universal.dylib` in Finder, choose **Open** and confirm. You only need to do this once.
-
 ## Usage
 
 ### Receiving messages
