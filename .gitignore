@@ -17,7 +17,6 @@ demo/addons/godot_rtmidi/macos/*
 demo/addons/godot_rtmidi/windows/*
 !demo/addons/godot_rtmidi/windows/.gitkeep
 !demo/addons/godot_rtmidi/*.gdextension
-.sconsign*.dblite
 
 # Ignore custom.py
 custom.py
