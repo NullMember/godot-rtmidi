@@ -1,6 +1,6 @@
 [configuration]
 
-entry_symbol = "example_library_init"
+entry_symbol = "godot_rtmidi_library_init"
 ; Must match GODOTCPP_API_VERSION in CMakeLists.txt.
 compatibility_minimum = "4.3"
 
