@@ -98,7 +98,8 @@ int MidiOut::get_port_count() {
 String MidiOut::get_port_name(int port_number) {
 	RtMidiOut *_midi_out = create_rtmidi_out();
 	ERR_FAIL_NULL_V_MSG(_midi_out, String(), MIDI_OUT_UNAVAILABLE);
-	String name = _midi_out->getPortName(port_number).c_str();
+	// Port names come from the OS as UTF-8.
+	String name = String::utf8(_midi_out->getPortName(port_number).c_str());
 	delete _midi_out;
 	return name;
 }
@@ -108,7 +109,7 @@ PackedStringArray MidiOut::get_port_names() {
 	ERR_FAIL_NULL_V_MSG(_midi_out, PackedStringArray(), MIDI_OUT_UNAVAILABLE);
 	PackedStringArray names;
 	for (unsigned int i = 0; i < _midi_out->getPortCount(); i++) {
-		names.push_back(_midi_out->getPortName(i).c_str());
+		names.push_back(String::utf8(_midi_out->getPortName(i).c_str()));
 	}
 	delete _midi_out;
 	return names;
@@ -128,10 +129,6 @@ void MidiOut::send_message(PackedByteArray message) {
 
 void MidiOut::midi_error_callback(RtMidiError::Type type, const std::string &error_text, void* user_data) {
 	MidiOut* midi_out = (MidiOut*)user_data;
-	_err_print_error("MidiOut", "godot_rtmidi_out.cpp", 0, error_text.c_str(), false, false);
-	midi_out->call_deferred("emit_signal", "midi_error", static_cast<int>(type), String(error_text.c_str()));
-}
-
-void MidiOut::_process(double delta) {
-	return;
+	_err_print_error("MidiOut", "godot_rtmidi_out.cpp", 0, String::utf8(error_text.c_str()), false, false);
+	midi_out->call_deferred("emit_signal", "midi_error", static_cast<int>(type), String::utf8(error_text.c_str()));
 }

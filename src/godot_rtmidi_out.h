@@ -28,8 +28,6 @@ public:
     static String get_port_name(int port_number);
     static PackedStringArray get_port_names();
     void send_message(PackedByteArray message);
-
-    void _process(double delta) override;
 };
 
 }
