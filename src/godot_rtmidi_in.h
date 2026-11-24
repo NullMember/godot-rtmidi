@@ -11,6 +11,7 @@ class MidiIn : public Node {
 
 private:
 	RtMidiIn* midi_in = nullptr; // nullptr if RtMidi failed to initialize
+	bool use_signals = true; // false: messages are queued for get_message() instead
     static void midi_message_callback(double deltatime, std::vector<unsigned char>* message, void* user_data);
     static void midi_error_callback(RtMidiError::Type type, const std::string &error_text, void* user_data);
 
@@ -28,11 +29,11 @@ public:
     static int get_port_count();
     static String get_port_name(int port_number);
     static PackedStringArray get_port_names();
-    void ignore_types(bool midi_sysex, bool midi_time, bool midi_sense);
+    void ignore_types(bool midi_sysex = true, bool midi_time = true, bool midi_sense = true);
     PackedByteArray get_message();
     void set_buffer_size(unsigned int buffer_size, unsigned int buffer_count);
-
-	void _process(double delta) override;
+    void set_use_signals(bool enabled);
+    bool is_using_signals() const;
 };
 
 }

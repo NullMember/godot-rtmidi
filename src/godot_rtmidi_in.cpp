@@ -11,9 +11,12 @@ void MidiIn::_bind_methods() {
 	ClassDB::bind_static_method("MidiIn", D_METHOD("get_port_count"), &MidiIn::get_port_count);
 	ClassDB::bind_static_method("MidiIn", D_METHOD("get_port_name", "port_number"), &MidiIn::get_port_name);
 	ClassDB::bind_static_method("MidiIn", D_METHOD("get_port_names"), &MidiIn::get_port_names);
-	ClassDB::bind_method(D_METHOD("ignore_types", "midi_sysex", "midi_time", "midi_sense"), &MidiIn::ignore_types);
+	ClassDB::bind_method(D_METHOD("ignore_types", "midi_sysex", "midi_time", "midi_sense"), &MidiIn::ignore_types, DEFVAL(true), DEFVAL(true), DEFVAL(true));
 	ClassDB::bind_method(D_METHOD("get_message"), &MidiIn::get_message);
 	ClassDB::bind_method(D_METHOD("set_buffer_size", "buffer_size", "buffer_count"), &MidiIn::set_buffer_size);
+	ClassDB::bind_method(D_METHOD("set_use_signals", "enabled"), &MidiIn::set_use_signals);
+	ClassDB::bind_method(D_METHOD("is_using_signals"), &MidiIn::is_using_signals);
+	ADD_PROPERTY(PropertyInfo(Variant::BOOL, "use_signals"), "set_use_signals", "is_using_signals");
 	ClassDB::bind_integer_constant("MidiIn", "MidiError", "ERROR_WARNING", static_cast<int>(RtMidiError::WARNING));
 	ClassDB::bind_integer_constant("MidiIn", "MidiError", "ERROR_DEBUG_WARNING", static_cast<int>(RtMidiError::DEBUG_WARNING));
 	ClassDB::bind_integer_constant("MidiIn", "MidiError", "ERROR_UNSPECIFIED", static_cast<int>(RtMidiError::UNSPECIFIED));
@@ -58,15 +61,42 @@ MidiIn::MidiIn() {
 		return;
 	}
 	midi_in->setErrorCallback(midi_error_callback, this);
-	midi_in->setCallback(midi_message_callback, this);
+	if (use_signals) {
+		midi_in->setCallback(midi_message_callback, this);
+	}
 }
 
 MidiIn::~MidiIn() {
 	if (!midi_in) {
 		return;
 	}
+	// Stop delivering messages before tearing down. RtMidi's input thread may
+	// still be running until closePort() returns.
+	if (use_signals) {
+		midi_in->cancelCallback();
+	}
 	midi_in->closePort();
 	delete midi_in;
+}
+
+void MidiIn::set_use_signals(bool enabled) {
+	if (use_signals == enabled) {
+		return;
+	}
+	use_signals = enabled;
+	if (!midi_in) {
+		return;
+	}
+	// RtMidi only queues messages for getMessage() while no callback is set.
+	if (use_signals) {
+		midi_in->setCallback(midi_message_callback, this);
+	} else {
+		midi_in->cancelCallback();
+	}
+}
+
+bool MidiIn::is_using_signals() const {
+	return use_signals;
 }
 
 void MidiIn::open_port(int port_number) {
@@ -102,7 +132,8 @@ int MidiIn::get_port_count() {
 String MidiIn::get_port_name(int port_number) {
 	RtMidiIn *_midi_in = create_rtmidi_in();
 	ERR_FAIL_NULL_V_MSG(_midi_in, String(), MIDI_IN_UNAVAILABLE);
-	String name = _midi_in->getPortName(port_number).c_str();
+	// Port names come from the OS as UTF-8.
+	String name = String::utf8(_midi_in->getPortName(port_number).c_str());
 	delete _midi_in;
 	return name;
 }
@@ -112,19 +143,20 @@ PackedStringArray MidiIn::get_port_names() {
 	ERR_FAIL_NULL_V_MSG(_midi_in, PackedStringArray(), MIDI_IN_UNAVAILABLE);
 	PackedStringArray names;
 	for (unsigned int i = 0; i < _midi_in->getPortCount(); i++) {
-		names.push_back(_midi_in->getPortName(i).c_str());
+		names.push_back(String::utf8(_midi_in->getPortName(i).c_str()));
 	}
 	delete _midi_in;
 	return names;
 }
 
-void MidiIn::ignore_types(bool midi_sysex = true, bool midi_time = true, bool midi_sense = true) {
+void MidiIn::ignore_types(bool midi_sysex, bool midi_time, bool midi_sense) {
 	ERR_FAIL_NULL_MSG(midi_in, MIDI_IN_UNAVAILABLE);
 	midi_in->ignoreTypes(midi_sysex, midi_time, midi_sense);
 }
 
 PackedByteArray MidiIn::get_message() {
 	ERR_FAIL_NULL_V_MSG(midi_in, PackedByteArray(), MIDI_IN_UNAVAILABLE);
+	ERR_FAIL_COND_V_MSG(use_signals, PackedByteArray(), "get_message() only works when use_signals is false. While signals are used, messages arrive through the midi_message signal.");
 	std::vector<unsigned char> message;
 	midi_in->getMessage(&message);
 	PackedByteArray packed_message;
@@ -152,10 +184,6 @@ void MidiIn::midi_message_callback(double deltatime, std::vector<unsigned char>*
 
 void MidiIn::midi_error_callback(RtMidiError::Type type, const std::string &error_text, void* user_data) {
 	MidiIn* midi_in = (MidiIn*)user_data;
-	_err_print_error("MidiIn", "godot_rtmidi_in.cpp", 0, error_text.c_str(), false, false);
-	midi_in->call_deferred("emit_signal", "midi_error", static_cast<int>(type), String(error_text.c_str()));
-}
-
-void MidiIn::_process(double delta) {
-	return;
+	_err_print_error("MidiIn", "godot_rtmidi_in.cpp", 0, String::utf8(error_text.c_str()), false, false);
+	midi_in->call_deferred("emit_signal", "midi_error", static_cast<int>(type), String::utf8(error_text.c_str()));
 }
