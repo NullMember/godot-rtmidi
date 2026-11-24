@@ -149,6 +149,49 @@ jobs:
               -output "$addon/godot_rtmidi.ios.$target.xcframework"
           done
 
+      # Only for releases and manual runs: notarization takes a few minutes, and
+      # pull requests from forks don't get access to secrets.
+      # iOS libraries don't need this: Xcode re-signs embedded frameworks with
+      # the game developer's identity when the game is exported.
+      - name: Sign and notarize (macOS)
+        if: matrix.platform == 'macos' && (startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch')
+        shell: bash
+        env:
+          MACOS_CERTIFICATE_P12: ${{ secrets.MACOS_CERTIFICATE_P12 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          NOTARY_API_KEY: ${{ secrets.NOTARY_API_KEY }}
+          NOTARY_API_KEY_ID: ${{ secrets.NOTARY_API_KEY_ID }}
+          NOTARY_API_ISSUER_ID: ${{ secrets.NOTARY_API_ISSUER_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "$MACOS_CERTIFICATE_P12" ] || [ -z "$NOTARY_API_KEY" ]; then
+            echo "::warning::Signing secrets are not set; the macOS libraries are not signed or notarized."
+            exit 0
+          fi
+
+          # Import the certificate into a temporary keychain.
+          keychain="$RUNNER_TEMP/signing.keychain-db"
+          keychain_password="$(openssl rand -base64 24)"
+          security create-keychain -p "$keychain_password" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$keychain_password" "$keychain"
+          echo "$MACOS_CERTIFICATE_P12" | base64 --decode > "$RUNNER_TEMP/certificate.p12"
+          security import "$RUNNER_TEMP/certificate.p12" -k "$keychain" -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          rm "$RUNNER_TEMP/certificate.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$keychain_password" "$keychain" > /dev/null
+          security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
+
+          echo "$NOTARY_API_KEY" | base64 --decode > "$RUNNER_TEMP/notary_key.p8"
+          NOTARY_API_KEY_PATH="$RUNNER_TEMP/notary_key.p8" \
+            .github/scripts/macos-sign-notarize.sh demo/addons/godot_rtmidi/macos
+
+      - name: Remove signing keychain
+        if: always() && matrix.platform == 'macos'
+        shell: bash
+        run: |
+          security delete-keychain "$RUNNER_TEMP/signing.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP/notary_key.p8"
+
       - name: List built libraries
         shell: bash
         run: ls -la demo/addons/godot_rtmidi/${{ matrix.platform }}/
