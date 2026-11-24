@@ -122,13 +122,21 @@ target_link_libraries(${LIBNAME} PRIVATE godot-cpp rtmidi)
 # Require at least C++17 for this target
 set_property(TARGET ${LIBNAME} PROPERTY CXX_STANDARD 17)
 
+# The Android exporter rejects native libraries whose names don't start with
+# "lib" and leaves them out of the APK.
+if(ANDROID)
+    set(LIBPREFIX "lib")
+else()
+    set(LIBPREFIX "")
+endif()
+
 set_target_properties(${LIBNAME}
     PROPERTIES
     # The generator expression here prevents msvc from adding a Debug or Release subdir.
     RUNTIME_OUTPUT_DIRECTORY "$<1:${PROJECT_SOURCE_DIR}/bin/${GODOTCPP_PLATFORM}>"
     LIBRARY_OUTPUT_DIRECTORY "$<1:${PROJECT_SOURCE_DIR}/bin/${GODOTCPP_PLATFORM}>"
 
-    PREFIX ""
+    PREFIX "${LIBPREFIX}"
     OUTPUT_NAME "${LIBNAME}${GODOTCPP_SUFFIX}"
 )
 
