@@ -20,6 +20,9 @@ endif()
 # CMAKE_SYSTEM_NAME inside project(), so skip this when cross-compiling (iOS, Android).
 if(CMAKE_HOST_APPLE AND NOT CMAKE_TOOLCHAIN_FILE AND (NOT CMAKE_SYSTEM_NAME OR CMAKE_SYSTEM_NAME STREQUAL "Darwin"))
     set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE STRING "")
+    # Without this the library requires the build machine's macOS version.
+    # 10.13 is Godot 4.3's minimum (arm64 slices are raised to 11.0 automatically).
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "Minimum macOS version")
 endif()
 
 project(godot-rtmidi
