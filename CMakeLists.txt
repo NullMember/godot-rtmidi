@@ -105,7 +105,18 @@ target_sources(${LIBNAME}
     src/godot_rtmidi_out.cpp
     src/godot_rtmidi_out.h
     src/rtmidi_common.h
+    src/bluetooth_midi.h
 )
+
+# Bluetooth MIDI device list: CoreAudioKit on iOS, a stub elsewhere.
+if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    enable_language(OBJCXX)
+    target_sources(${LIBNAME} PRIVATE src/bluetooth_midi_ios.mm)
+    set_source_files_properties(src/bluetooth_midi_ios.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+    target_link_libraries(${LIBNAME} PRIVATE "-framework CoreAudioKit" "-framework UIKit" "-framework Foundation")
+else()
+    target_sources(${LIBNAME} PRIVATE src/bluetooth_midi.cpp)
+endif()
 
 # Fetch a list of the xml files to use for documentation and add to our target
 file(GLOB_RECURSE DOC_XML LIST_DIRECTORIES NO CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/doc_classes/*.xml")
