@@ -71,6 +71,11 @@ endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# RtMidi reports fatal errors during construction (e.g. the MIDI driver can't
+# be opened) by throwing RtMidiError. godot-cpp disables exceptions by default,
+# which would make those uncatchable and terminate Godot.
+set(GODOTCPP_DISABLE_EXCEPTIONS OFF CACHE BOOL "" FORCE)
+
 # Only generate the godot-cpp bindings we use (~85 files instead of ~1900).
 # If the code starts using a new Godot class, add it to build_profile.json.
 if(NOT GODOTCPP_BUILD_PROFILE)

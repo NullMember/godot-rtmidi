@@ -10,7 +10,7 @@ class MidiOut : public Node {
     GDCLASS(MidiOut, Node)
 
 private:
-    RtMidiOut* midi_out;
+    RtMidiOut* midi_out = nullptr; // nullptr if RtMidi failed to initialize
     static void midi_error_callback(RtMidiError::Type type, const std::string &error_text, void* user_data);
 
 protected:

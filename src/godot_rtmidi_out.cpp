@@ -26,53 +26,96 @@ void MidiOut::_bind_methods() {
 	ADD_SIGNAL(MethodInfo("midi_error", PropertyInfo(Variant::INT, "error_type"), PropertyInfo(Variant::STRING, "error_message")));
 }
 
+#define MIDI_OUT_UNAVAILABLE "MIDI output is not available: RtMidi failed to initialize (see the earlier error)."
+
+// RtMidi throws RtMidiError from its constructor on fatal errors (e.g. the MIDI
+// driver can't be opened). Exceptions must never reach Godot, so every
+// construction goes through here. Returns nullptr on failure.
+static void print_error_callback(RtMidiError::Type type, const std::string &error_text, void *user_data) {
+	ERR_PRINT(String("MidiOut: ") + String::utf8(error_text.c_str()));
+}
+
+static RtMidiOut *create_rtmidi_out() {
+	try {
+		RtMidiOut *rtmidi = new RtMidiOut();
+		// Once an error callback is set, RtMidi reports errors through it instead of throwing.
+		rtmidi->setErrorCallback(print_error_callback, nullptr);
+		return rtmidi;
+	} catch (const RtMidiError &error) {
+		ERR_PRINT(String("MidiOut: failed to initialize RtMidi: ") + String::utf8(error.what()));
+	} catch (const std::exception &error) {
+		ERR_PRINT(String("MidiOut: failed to initialize RtMidi: ") + String::utf8(error.what()));
+	}
+	return nullptr;
+}
+
 MidiOut::MidiOut() {
-	midi_out = new RtMidiOut();
+	midi_out = create_rtmidi_out();
+	if (!midi_out) {
+		return;
+	}
 	midi_out->setErrorCallback(midi_error_callback, this);
 }
 
 MidiOut::~MidiOut() {
-	// Add your cleanup here.
+	if (!midi_out) {
+		return;
+	}
 	midi_out->closePort();
 	delete midi_out;
 }
 
 void MidiOut::open_port(int port_number) {
+	ERR_FAIL_NULL_MSG(midi_out, MIDI_OUT_UNAVAILABLE);
 	midi_out->openPort(port_number);
 }
 
 void MidiOut::open_virtual_port(String port_name) {
+	ERR_FAIL_NULL_MSG(midi_out, MIDI_OUT_UNAVAILABLE);
 	midi_out->openVirtualPort(port_name.utf8().get_data());
 }
 
 void MidiOut::close_port() {
+	ERR_FAIL_NULL_MSG(midi_out, MIDI_OUT_UNAVAILABLE);
 	midi_out->closePort();
 }
 
 bool MidiOut::is_port_open() {
+	if (!midi_out) {
+		return false;
+	}
 	return midi_out->isPortOpen();
 }
 
 int MidiOut::get_port_count() {
-	RtMidiOut _midi_out;
-	return _midi_out.getPortCount();
+	RtMidiOut *_midi_out = create_rtmidi_out();
+	ERR_FAIL_NULL_V_MSG(_midi_out, 0, MIDI_OUT_UNAVAILABLE);
+	int count = _midi_out->getPortCount();
+	delete _midi_out;
+	return count;
 }
 
 String MidiOut::get_port_name(int port_number) {
-	RtMidiOut _midi_out;
-	return _midi_out.getPortName(port_number).c_str();
+	RtMidiOut *_midi_out = create_rtmidi_out();
+	ERR_FAIL_NULL_V_MSG(_midi_out, String(), MIDI_OUT_UNAVAILABLE);
+	String name = _midi_out->getPortName(port_number).c_str();
+	delete _midi_out;
+	return name;
 }
 
 PackedStringArray MidiOut::get_port_names() {
-	RtMidiOut _midi_out;
+	RtMidiOut *_midi_out = create_rtmidi_out();
+	ERR_FAIL_NULL_V_MSG(_midi_out, PackedStringArray(), MIDI_OUT_UNAVAILABLE);
 	PackedStringArray names;
-	for (unsigned int i = 0; i < _midi_out.getPortCount(); i++) {
-		names.push_back(_midi_out.getPortName(i).c_str());
+	for (unsigned int i = 0; i < _midi_out->getPortCount(); i++) {
+		names.push_back(_midi_out->getPortName(i).c_str());
 	}
+	delete _midi_out;
 	return names;
 }
 
 void MidiOut::send_message(PackedByteArray message) {
+	ERR_FAIL_NULL_MSG(midi_out, MIDI_OUT_UNAVAILABLE);
 	if(message.size() == 0) {
 		return;
 	}
