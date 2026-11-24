@@ -68,6 +68,12 @@ endif()
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+# Only generate the godot-cpp bindings we use (~85 files instead of ~1900).
+# If the code starts using a new Godot class, add it to build_profile.json.
+if(NOT GODOTCPP_BUILD_PROFILE)
+    set(GODOTCPP_BUILD_PROFILE "${CMAKE_CURRENT_LIST_DIR}/build_profile.json" CACHE PATH "Path to a file containing a feature build profile" FORCE)
+endif()
+
 add_subdirectory(extern/godot-cpp SYSTEM)
 add_subdirectory(extern/rtmidi)
 

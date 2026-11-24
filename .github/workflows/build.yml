@@ -84,17 +84,17 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Set up sccache
-        if: runner.os != 'Windows' # The Visual Studio generator does not support compiler launchers
-        uses: mozilla-actions/sccache-action@v0.0.11
-
-      - name: Enable sccache
-        if: runner.os != 'Windows'
+      # A bare `cmake --build --parallel` runs `make -j` with no limit, which
+      # exhausts the macOS runners' process limit ("fork: Resource temporarily unavailable").
+      - name: Limit build parallelism to the CPU count
         shell: bash
         run: |
-          echo "SCCACHE_GHA_ENABLED=true" >> "$GITHUB_ENV"
-          echo "CMAKE_C_COMPILER_LAUNCHER=sccache" >> "$GITHUB_ENV"
-          echo "CMAKE_CXX_COMPILER_LAUNCHER=sccache" >> "$GITHUB_ENV"
+          case "$RUNNER_OS" in
+            Linux)   n=$(nproc) ;;
+            macOS)   n=$(sysctl -n hw.ncpu) ;;
+            Windows) n=$NUMBER_OF_PROCESSORS ;;
+          esac
+          echo "CMAKE_BUILD_PARALLEL_LEVEL=$n" >> "$GITHUB_ENV"
 
       - name: Install Linux dependencies
         if: matrix.apt
@@ -121,7 +121,7 @@ jobs:
           fi
           for target in template_debug template_release; do
             cmake -S . -B "build-$target" -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET=$target $flags
-            cmake --build "build-$target" --config Release --parallel
+            cmake --build "build-$target" --config Release
           done
 
       - name: Build (iOS)
@@ -138,7 +138,7 @@ jobs:
                 --toolchain extern/godot-cpp/cmake/ios.toolchain.cmake \
                 -DPLATFORM=$platform -DDEPLOYMENT_TARGET=12.0 \
                 -DCMAKE_BUILD_TYPE=Release -DGODOTCPP_TARGET=$target
-              cmake --build "build-$target-$platform" --parallel
+              cmake --build "build-$target-$platform"
               mkdir -p "stage/$platform"
               cp "bin/ios/$lib" "stage/$platform/"
             done

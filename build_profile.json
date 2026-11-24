@@ -1,0 +1,9 @@
+{
+	"_": "Only generate the godot-cpp bindings this extension uses; dependencies are added automatically. Engine and OS are needed by godot-cpp itself. Add classes here when the code starts using them.",
+	"type": "feature_profile",
+	"enabled_classes": [
+		"Engine",
+		"Node",
+		"OS"
+	]
+}
