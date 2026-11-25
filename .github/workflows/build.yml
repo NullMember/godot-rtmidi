@@ -124,6 +124,13 @@ jobs:
             cmake --build "build-$target" --config Release
           done
 
+      # RtMidi's Java helper classes, added to Gradle builds by the editor plugin.
+      # Built once (not per ABI) so the merged artifacts have a single copy.
+      - name: Build Android library (.aar)
+        if: matrix.slug == 'android-arm64'
+        shell: bash
+        run: android/build_aar.sh
+
       - name: Build (iOS)
         if: matrix.platform == 'ios'
         shell: bash
@@ -203,7 +210,7 @@ jobs:
           name: lib-${{ matrix.slug }}
           # The common parent (demo/addons/godot_rtmidi) is stripped, so the
           # artifact keeps the <platform>/ folder.
-          path: demo/addons/godot_rtmidi/*/godot_rtmidi.*
+          path: demo/addons/godot_rtmidi/*/*godot_rtmidi.*
           if-no-files-found: error
 
   package:

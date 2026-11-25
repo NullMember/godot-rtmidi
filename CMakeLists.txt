@@ -114,8 +114,13 @@ if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
     target_sources(${LIBNAME} PRIVATE src/bluetooth_midi_ios.mm)
     set_source_files_properties(src/bluetooth_midi_ios.mm PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
     target_link_libraries(${LIBNAME} PRIVATE "-framework CoreAudioKit" "-framework UIKit" "-framework Foundation")
-else()
+elseif(NOT ANDROID) # Android's is in android_midi.cpp.
     target_sources(${LIBNAME} PRIVATE src/bluetooth_midi.cpp)
+endif()
+
+# Android: registers RtMidi's Java listener so ports can be opened.
+if(ANDROID)
+    target_sources(${LIBNAME} PRIVATE src/android_midi.cpp src/android_midi.h)
 endif()
 
 # Fetch a list of the xml files to use for documentation and add to our target

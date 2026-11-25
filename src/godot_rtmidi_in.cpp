@@ -1,6 +1,9 @@
 #include "godot_rtmidi_in.h"
 #include "rtmidi_common.h"
 #include "bluetooth_midi.h"
+#ifdef __ANDROID__
+#include "android_midi.h"
+#endif
 
 #include <godot_cpp/core/class_db.hpp>
 
@@ -89,6 +92,12 @@ Error MidiIn::open_port(int port_number) {
 	int port_count = midi_in->getPortCount();
 	ERR_FAIL_COND_V_MSG(port_count == 0, ERR_CANT_OPEN, "No MIDI input ports are available.");
 	ERR_FAIL_INDEX_V_MSG(port_number, port_count, ERR_INVALID_PARAMETER, vformat("MIDI input port %d does not exist (%d ports available).", port_number, port_count));
+#ifdef __ANDROID__
+	Error android_err = godot_rtmidi::prepare_android_open_port("MidiIn");
+	if (android_err != OK) {
+		return android_err;
+	}
+#endif
 	midi_in->openPort(port_number);
 	// RtMidi reports failures through the error callback; check the result.
 	return midi_in->isPortOpen() ? OK : ERR_CANT_OPEN;

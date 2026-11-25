@@ -20,6 +20,8 @@ demo/addons/godot_rtmidi/windows/*
 demo/addons/godot_rtmidi/ios/*
 !demo/addons/godot_rtmidi/ios/.gitkeep
 !demo/addons/godot_rtmidi/*.gdextension
+!demo/addons/godot_rtmidi/plugin.cfg
+!demo/addons/godot_rtmidi/plugin.gd
 
 # Ignore custom.py
 custom.py

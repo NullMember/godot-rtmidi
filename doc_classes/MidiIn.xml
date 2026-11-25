@@ -19,6 +19,7 @@
 			<description>
 				Opens a MIDI input port by its index number. Port indices are zero-based and can be determined using [method get_port_names] or [method get_port_count].
 				Returns [constant OK] on success, [constant ERR_INVALID_PARAMETER] if [param port_number] doesn't exist, [constant ERR_ALREADY_IN_USE] if a port is already open, [constant ERR_CANT_OPEN] if no ports are available or the port could not be opened, or [constant ERR_UNAVAILABLE] if MIDI input could not be initialized.
+				On Android, opening ports needs the addon's Android library in the app: enable the godot_rtmidi editor plugin and [b]Use Gradle Build[/b] in the Android export preset (see the README). Without it, this returns [constant ERR_UNCONFIGURED].
 				[codeblock]
 				var err = midi_in.open_port(0)
 				if err != OK:
@@ -102,9 +103,10 @@
 		<method name="show_bluetooth_devices" qualifiers="static">
 			<return type="int" enum="Error" />
 			<description>
-				Shows the system's list of Bluetooth MIDI devices, where the user can connect or disconnect devices. A connected device then shows up in [method MidiIn.get_port_names] and [method MidiOut.get_port_names] like any other port, in this and every other app, until it is disconnected. The list closes when the user taps [b]Done[/b]; check the port list again afterwards.
-				This is only available on iOS, where an app must show this list to connect Bluetooth MIDI devices. On other platforms it returns [constant ERR_UNAVAILABLE]; on macOS, connect Bluetooth MIDI devices in Audio MIDI Setup instead.
-				The app must declare why it uses Bluetooth, or iOS terminates it. Add [code]&lt;key&gt;NSBluetoothAlwaysUsageDescription&lt;/key&gt;&lt;string&gt;Connects to Bluetooth MIDI devices.&lt;/string&gt;[/code] to [b]Additional Plist Content[/b] in the iOS export preset. Without it, this method returns [constant ERR_UNCONFIGURED] instead of showing the list.
+				Shows the system's list of Bluetooth MIDI devices, where the user can connect or disconnect devices. A connected device then shows up in [method MidiIn.get_port_names] and [method MidiOut.get_port_names] like any other port, in this and every other app, until it is disconnected. On iOS, the list closes when the user taps [b]Done[/b]. Check the port list again afterwards.
+				This is available on iOS and Android, where an app has to connect Bluetooth MIDI devices itself. On other platforms it returns [constant ERR_UNAVAILABLE]; on macOS, connect Bluetooth MIDI devices in Audio MIDI Setup instead.
+				[b]Android:[/b] shows the system's companion device picker, filtered to Bluetooth LE MIDI devices; no Bluetooth or location permission is needed. The chosen device is connected and stays connected until the app exits. Needs the addon's Android library (enable the godot_rtmidi editor plugin and [b]Use Gradle Build[/b]), otherwise this returns [constant ERR_UNCONFIGURED]. The method returns as soon as the picker is shown; the device's ports appear a moment after the user picks it. Computers that support both classic Bluetooth and Bluetooth LE (e.g. a Mac sharing MIDI over Bluetooth) may disconnect right away, because Android connects to them over classic Bluetooth.
+				[b]iOS:[/b] the app must declare why it uses Bluetooth, or iOS terminates it. Add [code]&lt;key&gt;NSBluetoothAlwaysUsageDescription&lt;/key&gt;&lt;string&gt;Connects to Bluetooth MIDI devices.&lt;/string&gt;[/code] to [b]Additional Plist Content[/b] in the iOS export preset. Without it, this method returns [constant ERR_UNCONFIGURED] instead of showing the list.
 				Returns [constant OK] when the list is shown, or [constant ERR_BUSY] if it is already showing.
 				[codeblock]
 				func _on_bluetooth_button_pressed():
