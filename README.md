@@ -151,7 +151,7 @@ If the MIDI system can't be initialized at all (for example when ALSA is unavail
 
 ## Building from source
 
-Requirements: CMake 3.24+, Python 3, a C++17 compiler, and on Linux the ALSA development files (`libasound2-dev` or `alsa-lib-devel`). For Android, also the NDK, and a JDK with an Android SDK platform for `android/build_aar.sh`, which builds `godot_rtmidi.aar`.
+Requirements: CMake 3.24+, Python 3, a C++17 compiler, and on Linux the ALSA development files (`libasound2-dev` or `alsa-lib-devel`). For Android, also the NDK, and JDK 17+ with an Android SDK platform for `android/build_aar.sh`, which builds `godot_rtmidi.aar`.
 
 ```sh
 git clone --recursive https://github.com/NullMember/godot-rtmidi.git
