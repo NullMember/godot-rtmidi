@@ -124,8 +124,18 @@ jobs:
             cmake --build "build-$target" --config Release
           done
 
-      # RtMidi's Java helper classes, added to Gradle builds by the editor plugin.
-      # Built once (not per ABI) so the merged artifacts have a single copy.
+      # Godot's Android library (compiled against by build_aar.sh) is Java 17
+      # bytecode; the runner's default JDK is older.
+      - name: Set up JDK 17
+        if: matrix.slug == 'android-arm64'
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # RtMidi's Java helper classes and the godot_rtmidi Godot Android plugin,
+      # added to Gradle builds by the editor plugin. Built once (not per ABI) so
+      # the merged artifacts have a single copy.
       - name: Build Android library (.aar)
         if: matrix.slug == 'android-arm64'
         shell: bash

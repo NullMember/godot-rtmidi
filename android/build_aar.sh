@@ -7,7 +7,7 @@
 # The godot_rtmidi editor plugin adds the .aar to Android Gradle builds.
 #
 # Usage: android/build_aar.sh [output.aar]
-# Needs a JDK (javac, jar), curl, and an Android SDK platform (ANDROID_HOME or
+# Needs JDK 17 or newer (javac, jar; Godot's library is Java 17 bytecode), curl, and an Android SDK platform (ANDROID_HOME or
 # ANDROID_SDK_ROOT; the newest installed platform's android.jar is used).
 # Godot's Android library is downloaded from Maven Central to compile against;
 # it isn't bundled (every Godot app already contains it).
