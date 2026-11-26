@@ -123,6 +123,57 @@ if(ANDROID)
     target_sources(${LIBNAME} PRIVATE src/android_midi.cpp src/android_midi.h)
 endif()
 
+# Windows: virtual ports through Windows MIDI Services (src/wms_virtual_port.*).
+# RtMidi 6.1.0 can't create virtual ports on Windows. Only the API's metadata
+# (Windows.Devices.Midi2.winmd) is needed at build time; nothing is linked
+# against Windows.Devices.Midi2.dll or shipped with the extension. On a PC
+# without the API, open_virtual_port() returns ERR_UNAVAILABLE.
+if(WIN32 AND MSVC)
+    option(GODOT_RTMIDI_WMS "Windows: create virtual ports through Windows MIDI Services (needs Windows.Devices.Midi2.winmd to build)" ON)
+else()
+    set(GODOT_RTMIDI_WMS OFF)
+endif()
+
+if(GODOT_RTMIDI_WMS)
+    list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/extern/rtmidi/cmake")
+    find_package(CppWinRT REQUIRED)
+    find_package(WindowsMidiServices)
+    if(NOT WindowsMidiServices_FOUND)
+        message(FATAL_ERROR
+            "Windows MIDI Services metadata (Windows.Devices.Midi2.winmd) not found; it is needed for virtual ports on Windows.\n"
+            "Download Windows.Devices.Midi2.0.99.92-preview.11.nupkg from https://github.com/microsoft/MIDI/releases/tag/inbox-preview-11, "
+            "unpack it (tar -xf <file>.nupkg -C wms) and configure with -DWindowsMidiServices_ROOT=<path>/wms.\n"
+            "Or build without virtual ports on Windows: -DGODOT_RTMIDI_WMS=OFF")
+    endif()
+
+    target_sources(${LIBNAME} PRIVATE src/wms_virtual_port.cpp src/wms_virtual_port.h)
+    target_compile_definitions(${LIBNAME} PRIVATE GODOT_RTMIDI_WMS)
+    target_include_directories(${LIBNAME} PRIVATE "${CppWinRT_INCLUDE_DIR}")
+    set_source_files_properties(src/wms_virtual_port.cpp PROPERTIES COMPILE_OPTIONS "/bigobj")
+    # Not windowsapp.lib: that umbrella library would route every Win32 import
+    # (even KERNEL32's) through api-ms-win-* API sets.
+    target_link_libraries(${LIBNAME} PRIVATE runtimeobject ole32 oleaut32)
+
+    # Generate the C++/WinRT headers for the API, unless the Windows SDK has them.
+    if(NOT WindowsMidiServices_SDK_PROJECTION)
+        set(GODOT_RTMIDI_WMS_PROJECTION_DIR "${CMAKE_CURRENT_BINARY_DIR}/wms_projection")
+        set(GODOT_RTMIDI_WMS_PROJECTION_HEADER "${GODOT_RTMIDI_WMS_PROJECTION_DIR}/winrt/Windows.Devices.Midi2.h")
+        add_custom_command(
+            OUTPUT "${GODOT_RTMIDI_WMS_PROJECTION_HEADER}"
+            COMMAND "${CppWinRT_EXECUTABLE}" -input "${WindowsMidiServices_WINMD}" -reference "${CppWinRT_WINDOWS_WINMD}" -output "${GODOT_RTMIDI_WMS_PROJECTION_DIR}"
+            DEPENDS "${WindowsMidiServices_WINMD}"
+            COMMENT "Generating Windows MIDI Services C++/WinRT headers"
+            VERBATIM)
+        add_custom_target(godot_rtmidi_wms_projection DEPENDS "${GODOT_RTMIDI_WMS_PROJECTION_HEADER}")
+        add_dependencies(${LIBNAME} godot_rtmidi_wms_projection)
+        # Before the SDK's own C++/WinRT headers, so both come from one generation.
+        target_include_directories(${LIBNAME} BEFORE PRIVATE "${GODOT_RTMIDI_WMS_PROJECTION_DIR}")
+    endif()
+    message(STATUS "Windows MIDI Services virtual ports: enabled")
+elseif(WIN32)
+    message(STATUS "Windows MIDI Services virtual ports: disabled")
+endif()
+
 # Fetch a list of the xml files to use for documentation and add to our target
 file(GLOB_RECURSE DOC_XML LIST_DIRECTORIES NO CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/doc_classes/*.xml")
 
@@ -135,8 +186,12 @@ endif()
 
 target_link_libraries(${LIBNAME} PRIVATE godot-cpp rtmidi)
 
-# Require at least C++17 for this target
-set_property(TARGET ${LIBNAME} PROPERTY CXX_STANDARD 17)
+# Require at least C++17 for this target. C++/WinRT needs C++20.
+if(GODOT_RTMIDI_WMS)
+    set_property(TARGET ${LIBNAME} PROPERTY CXX_STANDARD 20)
+else()
+    set_property(TARGET ${LIBNAME} PROPERTY CXX_STANDARD 17)
+endif()
 
 # The Android exporter rejects native libraries whose names don't start with
 # "lib" and leaves them out of the APK.

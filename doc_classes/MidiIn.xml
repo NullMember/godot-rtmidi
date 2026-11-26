@@ -32,9 +32,10 @@
 			<param index="0" name="port_name" type="String" />
 			<description>
 				Creates and opens a virtual MIDI input port with the specified name. This allows other applications to connect to this port and send MIDI messages. The port name is displayed in MIDI port lists of other applications.
-				Virtual ports are only supported on macOS, iOS and Linux. On Windows, Android and other platforms this returns [constant ERR_UNAVAILABLE]; on Windows, create a virtual port with a loopback driver such as loopMIDI and open it with [method open_port] instead.
+				Virtual ports are supported on macOS, iOS, Linux and Windows. On Android and other platforms this returns [constant ERR_UNAVAILABLE].
+				On Windows, virtual ports use Windows MIDI Services and need Windows 11 25H2 or later with its API ([code]Windows.Devices.Midi2[/code], installed by Windows Update) and the 64-bit build. Otherwise this returns [constant ERR_UNAVAILABLE]; create a virtual port with a loopback driver such as loopMIDI and open it with [method open_port] instead. Other applications see this port as a MIDI output. The first call can take a few seconds while Windows starts its MIDI service.
 				On iOS, the app must declare the [code]audio[/code] background mode, or this returns [constant ERR_CANT_OPEN]. Add [code]&lt;key&gt;UIBackgroundModes&lt;/key&gt;&lt;array&gt;&lt;string&gt;audio&lt;/string&gt;&lt;/array&gt;[/code] to [b]Additional Plist Content[/b] in the iOS export preset.
-				Returns [constant OK] on success, [constant ERR_ALREADY_IN_USE] if a port is already open, or [constant ERR_CANT_OPEN] if the port could not be created.
+				Returns [constant OK] on success, [constant ERR_ALREADY_IN_USE] if a port is already open, [constant ERR_CANT_OPEN] if the port could not be created, or [constant ERR_TIMEOUT] if the Windows MIDI service did not answer.
 			</description>
 		</method>
 		<method name="close_port">

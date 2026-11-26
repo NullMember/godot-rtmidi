@@ -1,13 +1,13 @@
-[gd_scene load_steps=2 format=3 uid="uid://dh0oj81pufivs"]
+[gd_scene format=3 uid="uid://dh0oj81pufivs"]
 
 [ext_resource type="Script" uid="uid://bkwk40ybs8kgm" path="res://example.gd" id="1_jdh55"]
 
-[node name="Node" type="Node"]
+[node name="Node" type="Node" unique_id=1007377353]
 script = ExtResource("1_jdh55")
 
-[node name="MidiIn" type="MidiIn" parent="."]
+[node name="MidiIn" type="MidiIn" parent="." unique_id=753449464]
 
-[node name="MidiOut" type="MidiOut" parent="."]
+[node name="MidiOut" type="MidiOut" parent="." unique_id=379783586]
 
 [connection signal="midi_error" from="MidiIn" to="." method="_on_midi_in_midi_error"]
 [connection signal="midi_message" from="MidiIn" to="." method="_on_midi_in_midi_message"]

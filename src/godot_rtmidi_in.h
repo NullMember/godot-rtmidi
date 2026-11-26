@@ -5,6 +5,14 @@
 #include <godot_cpp/classes/node.hpp>
 
 #include <atomic>
+#ifdef GODOT_RTMIDI_WMS
+#include <deque>
+#include <mutex>
+#include <vector>
+namespace godot_rtmidi::wms {
+class VirtualPort;
+}
+#endif
 
 namespace godot {
 
@@ -13,11 +21,24 @@ class MidiIn : public Node {
 
 private:
 	RtMidiIn* midi_in = nullptr; // nullptr if RtMidi failed to initialize
-	bool use_signals = true; // false: messages are queued for get_message() instead
+	std::atomic<bool> use_signals{true}; // false: messages are queued for get_message() instead
 	bool virtual_port_open = false; // RtMidi's isPortOpen() ignores virtual ports
 	std::atomic<bool> error_raised{false}; // set by the error callback, to detect failed RtMidi calls
     static void midi_message_callback(double deltatime, std::vector<unsigned char>* message, void* user_data);
     static void midi_error_callback(RtMidiError::Type type, const std::string &error_text, void* user_data);
+    static void emit_midi_message(MidiIn *midi_in, double deltatime, const std::vector<unsigned char> &message);
+
+#ifdef GODOT_RTMIDI_WMS
+	// Virtual port through Windows MIDI Services (see wms_virtual_port.h).
+	// RtMidi isn't involved, so ignore_types() and the get_message() queue are
+	// handled here for it.
+	godot_rtmidi::wms::VirtualPort *wms_port = nullptr;
+	std::atomic<bool> ignore_sysex{true}, ignore_time{true}, ignore_sense{true}; // RtMidi's defaults
+	std::mutex wms_queue_mutex;
+	std::deque<std::vector<unsigned char>> wms_queue;
+	static void wms_message_callback(double deltatime, const std::vector<unsigned char> &message, void *user_data);
+	void close_wms_port();
+#endif
 
 protected:
 	static void _bind_methods();

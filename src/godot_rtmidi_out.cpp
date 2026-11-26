@@ -4,6 +4,9 @@
 #ifdef __ANDROID__
 #include "android_midi.h"
 #endif
+#ifdef GODOT_RTMIDI_WMS
+#include "wms_virtual_port.h"
+#endif
 
 #include <godot_cpp/core/class_db.hpp>
 
@@ -45,6 +48,10 @@ MidiOut::MidiOut() {
 }
 
 MidiOut::~MidiOut() {
+#ifdef GODOT_RTMIDI_WMS
+	wms::close_virtual_port(wms_port);
+	wms_port = nullptr;
+#endif
 	if (!midi_out) {
 		return;
 	}
@@ -73,6 +80,25 @@ Error MidiOut::open_virtual_port(String port_name) {
 	ERR_FAIL_NULL_V_MSG(midi_out, ERR_UNAVAILABLE, MIDI_OUT_UNAVAILABLE);
 	ERR_FAIL_COND_V_MSG(is_port_open(), ERR_ALREADY_IN_USE, "A MIDI output port is already open. Call close_port() first.");
 	RtMidi::Api api = midi_out->getCurrentApi();
+#ifdef GODOT_RTMIDI_WMS
+	if (!api_supports_virtual_ports(api)) {
+		// RtMidi can't create virtual ports on Windows; Windows MIDI Services can.
+		ERR_FAIL_COND_V_MSG(port_name.is_empty(), ERR_INVALID_PARAMETER, "The virtual MIDI port needs a name.");
+		Error err = OK;
+		String message;
+		wms_port = wms::open_virtual_port(wms::Direction::OUTPUT, port_name, nullptr, nullptr, err, message);
+		if (!wms_port) {
+			if (err == ERR_UNAVAILABLE) {
+				ERR_PRINT("MidiOut: " + message);
+			} else {
+				report_rtmidi_error(this, "MidiOut", RtMidiError::DRIVER_ERROR, message.utf8().get_data());
+			}
+			return err;
+		}
+		virtual_port_open = true;
+		return OK;
+	}
+#endif
 	ERR_FAIL_COND_V_MSG(!api_supports_virtual_ports(api), ERR_UNAVAILABLE, virtual_ports_unsupported_message(api));
 	// RtMidi's isPortOpen() doesn't cover virtual ports, and failures are only
 	// reported through the error callback.
@@ -91,6 +117,14 @@ Error MidiOut::close_port() {
 	if (!is_port_open()) {
 		return ERR_DOES_NOT_EXIST;
 	}
+#ifdef GODOT_RTMIDI_WMS
+	if (wms_port) {
+		wms::close_virtual_port(wms_port);
+		wms_port = nullptr;
+		virtual_port_open = false;
+		return OK;
+	}
+#endif
 	// Closes both a regular and a virtual port.
 	midi_out->closePort();
 	virtual_port_open = false;
@@ -142,6 +176,18 @@ Error MidiOut::send_message(PackedByteArray message) {
 	ERR_FAIL_COND_V_MSG(message.is_empty(), ERR_INVALID_PARAMETER, "Cannot send an empty MIDI message.");
 	ERR_FAIL_COND_V_MSG(!is_port_open(), ERR_UNCONFIGURED, "No MIDI output port is open. Call open_port() or open_virtual_port() first.");
 
+#ifdef GODOT_RTMIDI_WMS
+	if (wms_port) {
+		String error_message;
+		Error err = wms::send_message(wms_port, message.ptr(), message.size(), error_message);
+		if (err == ERR_INVALID_PARAMETER) {
+			ERR_PRINT("MidiOut: " + error_message);
+		} else if (err != OK) {
+			report_rtmidi_error(this, "MidiOut", RtMidiError::DRIVER_ERROR, error_message.utf8().get_data());
+		}
+		return err;
+	}
+#endif
 	std::vector<unsigned char> message_vector(message.ptr(), message.ptr() + message.size());
 	// RtMidi reports send failures through the error callback, not a return value.
 	error_raised = false;

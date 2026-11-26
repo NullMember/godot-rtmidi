@@ -12,7 +12,6 @@ extends Node
 @onready var midi_in: MidiIn = $MidiIn
 @onready var midi_out: MidiOut = $MidiOut
 
-
 func _ready() -> void:
 	print("MIDI inputs: ", MidiIn.get_port_names())
 	print("MIDI outputs: ", MidiOut.get_port_names())

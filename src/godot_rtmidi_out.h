@@ -5,6 +5,11 @@
 #include <godot_cpp/classes/node.hpp>
 
 #include <atomic>
+#ifdef GODOT_RTMIDI_WMS
+namespace godot_rtmidi::wms {
+class VirtualPort;
+}
+#endif
 
 namespace godot {
 
@@ -16,6 +21,9 @@ private:
     bool virtual_port_open = false; // RtMidi's isPortOpen() ignores virtual ports
     std::atomic<bool> error_raised{false}; // set by the error callback, to detect failed RtMidi calls
     static void midi_error_callback(RtMidiError::Type type, const std::string &error_text, void* user_data);
+#ifdef GODOT_RTMIDI_WMS
+    godot_rtmidi::wms::VirtualPort* wms_port = nullptr; // virtual port through Windows MIDI Services (see wms_virtual_port.h)
+#endif
 
 protected:
     static void _bind_methods();

@@ -4,6 +4,9 @@
 #ifdef __ANDROID__
 #include "android_midi.h"
 #endif
+#ifdef GODOT_RTMIDI_WMS
+#include "wms_virtual_port.h"
+#endif
 
 #include <godot_cpp/core/class_db.hpp>
 
@@ -11,6 +14,11 @@ using namespace godot;
 using namespace godot_rtmidi;
 
 #define MIDI_IN_UNAVAILABLE "MIDI input is not available: RtMidi failed to initialize (see the earlier error)."
+
+#ifdef GODOT_RTMIDI_WMS
+// Same limit as RtMidi's input queue: older messages are kept, newer dropped.
+static constexpr size_t WMS_QUEUE_LIMIT = 100;
+#endif
 
 void MidiIn::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("open_port", "port_number"), &MidiIn::open_port);
@@ -54,6 +62,9 @@ MidiIn::MidiIn() {
 }
 
 MidiIn::~MidiIn() {
+#ifdef GODOT_RTMIDI_WMS
+	close_wms_port(); // no callback runs after this
+#endif
 	if (!midi_in) {
 		return;
 	}
@@ -107,6 +118,25 @@ Error MidiIn::open_virtual_port(String port_name) {
 	ERR_FAIL_NULL_V_MSG(midi_in, ERR_UNAVAILABLE, MIDI_IN_UNAVAILABLE);
 	ERR_FAIL_COND_V_MSG(is_port_open(), ERR_ALREADY_IN_USE, "A MIDI input port is already open. Call close_port() first.");
 	RtMidi::Api api = midi_in->getCurrentApi();
+#ifdef GODOT_RTMIDI_WMS
+	if (!api_supports_virtual_ports(api)) {
+		// RtMidi can't create virtual ports on Windows; Windows MIDI Services can.
+		ERR_FAIL_COND_V_MSG(port_name.is_empty(), ERR_INVALID_PARAMETER, "The virtual MIDI port needs a name.");
+		Error err = OK;
+		String message;
+		wms_port = wms::open_virtual_port(wms::Direction::INPUT, port_name, wms_message_callback, this, err, message);
+		if (!wms_port) {
+			if (err == ERR_UNAVAILABLE) {
+				ERR_PRINT("MidiIn: " + message);
+			} else {
+				report_rtmidi_error(this, "MidiIn", RtMidiError::DRIVER_ERROR, message.utf8().get_data());
+			}
+			return err;
+		}
+		virtual_port_open = true;
+		return OK;
+	}
+#endif
 	ERR_FAIL_COND_V_MSG(!api_supports_virtual_ports(api), ERR_UNAVAILABLE, virtual_ports_unsupported_message(api));
 	// RtMidi's isPortOpen() doesn't cover virtual ports, and failures are only
 	// reported through the error callback.
@@ -125,11 +155,49 @@ Error MidiIn::close_port() {
 	if (!is_port_open()) {
 		return ERR_DOES_NOT_EXIST;
 	}
+#ifdef GODOT_RTMIDI_WMS
+	if (wms_port) {
+		close_wms_port();
+		virtual_port_open = false;
+		return OK;
+	}
+#endif
 	// Closes both a regular and a virtual port.
 	midi_in->closePort();
 	virtual_port_open = false;
 	return OK;
 }
+
+#ifdef GODOT_RTMIDI_WMS
+void MidiIn::close_wms_port() {
+	if (!wms_port) {
+		return;
+	}
+	wms::close_virtual_port(wms_port);
+	wms_port = nullptr;
+	std::lock_guard<std::mutex> lock(wms_queue_mutex);
+	wms_queue.clear();
+}
+
+void MidiIn::wms_message_callback(double deltatime, const std::vector<unsigned char> &message, void *user_data) {
+	MidiIn *midi_in = static_cast<MidiIn *>(user_data);
+	// Same filtering as RtMidi's ignoreTypes().
+	const unsigned char status = message[0];
+	if ((status == 0xF0 && midi_in->ignore_sysex) ||
+			((status == 0xF1 || status == 0xF8) && midi_in->ignore_time) ||
+			(status == 0xFE && midi_in->ignore_sense)) {
+		return;
+	}
+	if (midi_in->use_signals) {
+		emit_midi_message(midi_in, deltatime, message);
+		return;
+	}
+	std::lock_guard<std::mutex> lock(midi_in->wms_queue_mutex);
+	if (midi_in->wms_queue.size() < WMS_QUEUE_LIMIT) {
+		midi_in->wms_queue.push_back(message);
+	}
+}
+#endif
 
 bool MidiIn::is_port_open() {
 	if (!midi_in) {
@@ -174,13 +242,29 @@ Error MidiIn::show_bluetooth_devices() {
 void MidiIn::ignore_types(bool midi_sysex, bool midi_time, bool midi_sense) {
 	ERR_FAIL_NULL_MSG(midi_in, MIDI_IN_UNAVAILABLE);
 	midi_in->ignoreTypes(midi_sysex, midi_time, midi_sense);
+#ifdef GODOT_RTMIDI_WMS
+	ignore_sysex = midi_sysex;
+	ignore_time = midi_time;
+	ignore_sense = midi_sense;
+#endif
 }
 
 PackedByteArray MidiIn::get_message() {
 	ERR_FAIL_NULL_V_MSG(midi_in, PackedByteArray(), MIDI_IN_UNAVAILABLE);
 	ERR_FAIL_COND_V_MSG(use_signals, PackedByteArray(), "get_message() only works when use_signals is false. While signals are used, messages arrive through the midi_message signal.");
 	std::vector<unsigned char> message;
-	midi_in->getMessage(&message);
+#ifdef GODOT_RTMIDI_WMS
+	if (wms_port) {
+		std::lock_guard<std::mutex> lock(wms_queue_mutex);
+		if (!wms_queue.empty()) {
+			message.swap(wms_queue.front());
+			wms_queue.pop_front();
+		}
+	} else
+#endif
+	{
+		midi_in->getMessage(&message);
+	}
 	PackedByteArray packed_message;
 	packed_message.resize(message.size());
 	for (unsigned int i = 0; i < message.size(); i++) {
@@ -195,11 +279,14 @@ void MidiIn::set_buffer_size(unsigned int buffer_size, unsigned int buffer_count
 }
 
 void MidiIn::midi_message_callback(double deltatime, std::vector<unsigned char> *message, void *user_data) {
-	MidiIn *midi_in = static_cast<MidiIn *>(user_data);
+	emit_midi_message(static_cast<MidiIn *>(user_data), deltatime, *message);
+}
+
+void MidiIn::emit_midi_message(MidiIn *midi_in, double deltatime, const std::vector<unsigned char> &message) {
 	PackedByteArray packed_message;
-	packed_message.resize(message->size());
-	for (unsigned int i = 0; i < message->size(); i++) {
-		packed_message.set(i, (*message)[i]);
+	packed_message.resize(message.size());
+	for (unsigned int i = 0; i < message.size(); i++) {
+		packed_message.set(i, message[i]);
 	}
 	midi_in->call_deferred("emit_signal", "midi_message", deltatime, packed_message);
 }

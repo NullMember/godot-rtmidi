@@ -10,7 +10,7 @@ Requires Godot 4.3 or newer.
 
 | Platform | Architectures | Requirements | Virtual ports |
 |---|---|---|---|
-| Windows | x86_64, x86_32 | — | No (use [loopMIDI](https://www.tobias-erichsen.de/software/loopmidi.html)) |
+| Windows | x86_64, x86_32 | — | Windows 11 25H2+ with Windows MIDI Services, x86_64 only ([details](#virtual-ports)) |
 | macOS | universal (x86_64, arm64) | macOS 10.13+ (Apple Silicon: 11.0+) | Yes |
 | Linux | x86_64, arm64 | glibc 2.34+ (e.g. Ubuntu 22.04, Debian 12) and ALSA (`libasound.so.2`) | Yes |
 | iOS | arm64 (device and simulator) | iOS 12+ | Yes |
@@ -96,9 +96,46 @@ On Android, an output port can only be open in one `MidiOut` at a time (also acr
 
 ### Virtual ports
 
-`open_virtual_port(name)` creates a port that other applications can connect to. This works on macOS, iOS and Linux. On Windows and Android it returns `ERR_UNAVAILABLE`; on Windows, create a virtual port with [loopMIDI](https://www.tobias-erichsen.de/software/loopmidi.html) and open it with `open_port()` instead.
+`open_virtual_port(name)` creates a port that other applications can connect to. This works on macOS, iOS, Linux and Windows. On Android it returns `ERR_UNAVAILABLE`.
 
 On iOS, virtual ports need the `audio` background mode (see [iOS export settings](#ios-export-settings)), or `open_virtual_port()` returns `ERR_CANT_OPEN`.
+
+On Windows, virtual ports use [Windows MIDI Services](https://microsoft.github.io/MIDI/), Microsoft's new MIDI system:
+
+- They need Windows 11 25H2 or later with the Windows MIDI Services API (`Windows.Devices.Midi2`), which Windows Update installs. Nothing has to be shipped with your game, but until Windows includes the API you can [ship Microsoft's preview copy](#shipping-the-windows-midi-services-api-with-your-game). Where it's missing (older Windows, a PC without the update, Windows set to its legacy MIDI stack, or the 32-bit build), `open_virtual_port()` returns `ERR_UNAVAILABLE`. As a fallback, create a virtual port with [loopMIDI](https://www.tobias-erichsen.de/software/loopmidi.html) and open it with `open_port()`.
+- Other applications see the port under its name, including older ones that use the classic Windows MIDI API (which shows at most 31 characters). A `MidiIn` virtual port shows up there as an output, a `MidiOut` one as an input.
+- The first call can take a few seconds while Windows starts its MIDI service.
+- `send_message()` takes one complete message per call (no running status).
+
+#### Shipping the Windows MIDI Services API with your game
+
+Until Windows includes the API, you can ship Microsoft's preview copy of it with your game. godot-rtmidi doesn't include it. Microsoft allows this under the "go live" terms in the [Preview 11 release notes](https://github.com/microsoft/MIDI/releases/tag/inbox-preview-11). By shipping it, you agree to update your game to newer previews and remove the files once Windows includes the API, to tell your players that the game uses a preview Windows MIDI Services API, not to ship it to Windows versions older than Windows 11 25H2, and to report problems on Microsoft's GitHub. On a PC whose Windows has its own copy, Windows uses that one instead of yours.
+
+1. Download `Windows.Devices.Midi2.0.99.92-preview.11.nupkg` from the [Preview 11 release](https://github.com/microsoft/MIDI/releases/tag/inbox-preview-11) and unpack it with Windows' own `tar` (in cmd or PowerShell; Git Bash's `tar` can't read it):
+
+   ```
+   mkdir wms
+   tar -xf Windows.Devices.Midi2.0.99.92-preview.11.nupkg -C wms
+   ```
+
+   You need two files from `wms/runtimes/win-x64/native/`: `Windows.Devices.Midi2.dll` and `Windows.Devices.Midi2.pri`. Always copy both.
+
+2. To use virtual ports while running your game from the editor, copy both files next to the Godot editor executable (`Godot_v4.x-stable_win64.exe`). Windows looks for them next to the program that's running, not in your project.
+
+3. For exported games, copy both files into your project, for example to `res://addons/godot_rtmidi/windows/wms/`, and add this to the end of `res://addons/godot_rtmidi/godot_rtmidi.gdextension`:
+
+   ```ini
+   [dependencies]
+
+   windows.x86_64 = {
+       "res://addons/godot_rtmidi/windows/wms/Windows.Devices.Midi2.dll": "",
+       "res://addons/godot_rtmidi/windows/wms/Windows.Devices.Midi2.pri": ""
+   }
+   ```
+
+   Godot then puts both files next to the exported `.exe`. Updating godot-rtmidi replaces `godot_rtmidi.gdextension`, so add the section again after an update. You can also copy the two files next to the exported `.exe` yourself instead.
+
+Your players need Windows 11 25H2 or later. This works with the 64-bit (x86_64) build only.
 
 ### Bluetooth MIDI
 
@@ -153,6 +190,8 @@ If the MIDI system can't be initialized at all (for example when ALSA is unavail
 
 Requirements: CMake 3.24+, Python 3, a C++17 compiler, and on Linux the ALSA development files (`libasound2-dev` or `alsa-lib-devel`). For Android, also the NDK, and JDK 17+ with an Android SDK platform for `android/build_aar.sh`, which builds `godot_rtmidi.aar`.
 
+On Windows: Visual Studio 2022+ (MSVC) with a Windows SDK 10.0.22000 or newer, and the Windows MIDI Services API metadata for virtual ports. Download `Windows.Devices.Midi2.0.99.92-preview.11.nupkg` from [Microsoft's release page](https://github.com/microsoft/MIDI/releases/tag/inbox-preview-11), unpack it with Windows' own `tar` (`tar -xf Windows.Devices.Midi2.0.99.92-preview.11.nupkg -C wms`) and add `-DWindowsMidiServices_ROOT=<path>/wms` to the `cmake -S` command. Only its `ref/native/Windows.Devices.Midi2.winmd` is used; nothing from it is shipped.
+
 ```sh
 git clone --recursive https://github.com/NullMember/godot-rtmidi.git
 cd godot-rtmidi
@@ -164,6 +203,7 @@ The library is copied into `demo/addons/godot_rtmidi/<platform>/`. Build with `-
 
 Build options:
 
+- `-DGODOT_RTMIDI_WMS=OFF` (Windows): builds without Windows MIDI Services, so the API metadata isn't needed. `open_virtual_port()` then always returns `ERR_UNAVAILABLE` on Windows.
 - `-DGODOT_RTMIDI_JACK=ON` (Linux): adds the JACK backend. The library then requires `libjack` at runtime, so the official builds don't include it. Requires the JACK development files.
 - `build_profile.json` limits the generated Godot bindings to the classes this extension uses, which keeps builds fast. If you change the code to use another Godot class, add it there.
 
@@ -171,6 +211,7 @@ Build options:
 
 - On macOS, virtual ports with non-ASCII names (e.g. `"Tést"`) show up garbled in other applications. This is a bug in RtMidi; a fix is being contributed upstream.
 - On Android, the `deltatime` of received messages is always `0`. This is a bug in RtMidi.
+- On Windows builds from before the November 2026 update (KB5132057), Windows MIDI Services can hang while creating or removing a virtual port, especially after an app using one was force-closed ([microsoft/MIDI#1047](https://github.com/microsoft/MIDI/issues/1047)). `open_virtual_port()` then returns `ERR_TIMEOUT` instead of freezing the game. Install the latest Windows updates; until Windows has fully rolled out the fix (up to 30 days after the update), restarting the PC or the MIDI service (`midisrv`) clears it.
 
 ## License
 

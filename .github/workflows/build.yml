@@ -102,6 +102,25 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ${{ matrix.apt }}
 
+      # Virtual ports on Windows use Windows MIDI Services. Building needs only
+      # the API's metadata (.winmd) from Microsoft's NuGet package; its DLL is
+      # not shipped. Preview 11 is the current (locked) API. Windows' own tar
+      # reads the .nupkg (a zip); Git Bash's tar can't.
+      - name: Get Windows MIDI Services metadata
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $package = 'Windows.Devices.Midi2.0.99.92-preview.11.nupkg'
+          gh release download inbox-preview-11 --repo microsoft/MIDI --pattern $package --dir $env:RUNNER_TEMP
+          $wms = Join-Path $env:RUNNER_TEMP 'wms'
+          New-Item -ItemType Directory -Force $wms | Out-Null
+          & "$env:SystemRoot\System32\tar.exe" -xf (Join-Path $env:RUNNER_TEMP $package) -C $wms ref/native/Windows.Devices.Midi2.winmd
+          if ($LASTEXITCODE -ne 0) { throw "tar failed" }
+          "WindowsMidiServices_ROOT=$wms" | Out-File -Append -Encoding utf8 $env:GITHUB_ENV
+
       - name: Set up Android NDK
         if: matrix.platform == 'android'
         id: ndk
